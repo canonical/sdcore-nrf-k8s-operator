@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-
+# test
 """Charmed operator for the SD-Core NRF service."""
 
 import logging
