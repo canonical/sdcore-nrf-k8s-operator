@@ -2,6 +2,9 @@ name: sdcore-nrf
 display-name: SD-Core NRF
 summary: Charmed Operator for the SD-Core Network Repository Function (NRF).
 description: Charmed Operator for the SD-Core Network Repository Function (NRF).
+website: https://charmhub.io/sdcore-nrf
+source: https://github.com/canonical/sdcore-nrf-operator
+issues: https://github.com/canonical/sdcore-nrf-operator/issues
 
 containers:
   nrf:
@@ -32,7 +35,7 @@ requires:
   certificates:
     interface: tls-certificates
 
-provides:  
+provides:
   fiveg-nrf:
     interface: fiveg_nrf
 
