@@ -13,6 +13,8 @@ from charm import NRFOperatorCharm  # type: ignore[import]
 DB_APPLICATION_NAME = "mongodb-k8s"
 BASE_CONFIG_PATH = "/etc/nrf"
 CONFIG_FILE_NAME = "nrfcfg.yaml"
+TLS_APPLICATION_NAME = "self-signed-certificates"
+TLS_RELATION_NAME = "certificates"
 
 
 class TestCharm(unittest.TestCase):
@@ -77,10 +79,22 @@ class TestCharm(unittest.TestCase):
             BlockedStatus("Waiting for database relation to be created"),
         )
 
+    def test_given_certificates_relation_not_created_when_pebble_ready_then_status_is_blocked(
+        self,
+    ):
+        self.harness.container_pebble_ready(container_name="nrf")
+        self._create_database_relation()
+
+        self.assertEqual(
+            self.harness.model.unit.status,
+            BlockedStatus(f"Waiting for {TLS_RELATION_NAME} relation to be created"),
+        )
+
     def test_given_database_not_available_when_pebble_ready_then_status_is_waiting(
         self,
     ):
         self._create_database_relation()
+        self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.container_pebble_ready(container_name="nrf")
         self.assertEqual(
             self.harness.model.unit.status,
@@ -94,6 +108,7 @@ class TestCharm(unittest.TestCase):
     ):
         patch_is_resource_created.return_value = True
         self._create_database_relation()
+        self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.container_pebble_ready(container_name="nrf")
         self.assertEqual(
             self.harness.model.unit.status,
@@ -104,8 +119,8 @@ class TestCharm(unittest.TestCase):
         self,
     ):
         self._database_is_available()
+        self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.container_pebble_ready(container_name="nrf")
-
         self.assertEqual(
             self.harness.model.unit.status,
             WaitingStatus("Waiting for storage to be attached"),
@@ -113,19 +128,54 @@ class TestCharm(unittest.TestCase):
 
     @patch("ops.model.Container.exists")
     @patch("ops.model.Container.push")
+    @patch("charm.check_output")
+    @patch("charm.generate_private_key")
+    def test_given_certificates_not_stored_when_pebble_ready_then_status_is_waiting(
+        self,
+        patch_generate_private_key,
+        patch_check_output,
+        patch_push,
+        patch_exists,
+    ):
+        private_key = b"whatever key content"
+        patch_generate_private_key.return_value = private_key
+        patch_check_output.return_value = b"1.1.1.1"
+        patch_exists.side_effect = [True, False, True, False]
+        self.harness.set_can_connect(container="nrf", val=True)
+        self._database_is_available()
+        self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
+        self.harness.container_pebble_ready("nrf")
+        self.assertEqual(
+            self.harness.model.unit.status,
+            WaitingStatus("Waiting for certificates to be stored"),
+        )
+
+    @patch("ops.model.Container.exists")
+    @patch("ops.model.Container.push")
     @patch("ops.model.Container.pull")
     @patch("charm.check_output")
-    def test_given_database_info_and_storage_attached_when_pebble_ready_then_config_file_is_rendered_and_pushed(  # noqa: E501
+    @patch("charm.generate_private_key")
+    def test_given_database_info_and_storage_attached_and_certs_stored_when_pebble_ready_then_config_file_is_rendered_and_pushed(  # noqa: E501
         self,
+        patch_generate_private_key,
         patch_check_output,
         patch_pull,
         patch_push,
         patch_exists,
     ):
+        private_key = b"whatever key content"
+        patch_generate_private_key.return_value = private_key
         patch_check_output.return_value = b"1.1.1.1"
-        patch_pull.return_value = StringIO("dummy")
-        patch_exists.side_effect = [True, False, False]
+        csr = "Whatever CSR content"
+        certificate = "Whatever certificate content"
+        event = Mock()
+        event.certificate = certificate
+        event.certificate_signing_request = csr
+        patch_pull.side_effect = [StringIO(csr), StringIO("Dummy Content")]
+        patch_exists.side_effect = [True, True, False, False]
         self._database_is_available()
+        self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
+        self.harness.charm._on_certificate_available(event=event)
         self.harness.container_pebble_ready(container_name="nrf")
         with open("tests/unit/expected_config/config.conf") as expected_config_file:
             expected_content = expected_config_file.read()
@@ -172,6 +222,7 @@ class TestCharm(unittest.TestCase):
         patch_exists.return_value = True
 
         self._database_is_available()
+        self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
 
         self.harness.container_pebble_ready(container_name="nrf")
 
@@ -214,8 +265,8 @@ class TestCharm(unittest.TestCase):
         patch_exists.return_value = True
 
         self._database_is_available()
+        self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
 
-        self.harness.container_pebble_ready(container_name="nrf")
         self.harness.container_pebble_ready("nrf")
 
         self.assertEqual(self.harness.model.unit.status, ActiveStatus())
@@ -238,6 +289,7 @@ class TestCharm(unittest.TestCase):
         patch_exists.return_value = True
 
         self._database_is_available()
+        self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
 
         self.harness.container_pebble_ready(container_name="nrf")
         self.harness.container_pebble_ready("nrf")
@@ -246,34 +298,6 @@ class TestCharm(unittest.TestCase):
             self.harness.model.unit.status,
             WaitingStatus("Waiting for pod IP address to be available"),
         )
-
-    @patch("ops.model.Container.push", new=Mock)
-    @patch("ops.model.Container.pull")
-    @patch("ops.model.Container.exists")
-    @patch("charm.check_output")
-    def test_given_http_nrf_url_and_service_is_running_when_fiveg_nrf_relation_joined_then_nrf_url_is_in_relation_databag(  # noqa: E501
-        self, patch_check_output, patch_exists, patch_pull
-    ):
-        patch_check_output.return_value = b"1.1.1.1"
-        patch_exists.side_effect = [True, False, False, False]
-        patch_pull.return_value = StringIO(
-            self._read_file("tests/unit/expected_config/config.conf").strip()
-        )
-
-        self._database_is_available()
-
-        self.harness.set_can_connect(container="nrf", val=True)
-        self.harness.container_pebble_ready("nrf")
-
-        relation_id = self.harness.add_relation(
-            relation_name="fiveg-nrf",
-            remote_app="nrf-requirer",
-        )
-        self.harness.add_relation_unit(relation_id=relation_id, remote_unit_name="nrf-requirer/0")
-        relation_data = self.harness.get_relation_data(
-            relation_id=relation_id, app_or_unit=self.harness.charm.app.name
-        )
-        self.assertEqual(relation_data["url"], "http://nrf:29510")
 
     @patch("ops.model.Container.push", new=Mock)
     @patch("ops.model.Container.pull")
@@ -289,6 +313,7 @@ class TestCharm(unittest.TestCase):
         )
 
         self._database_is_available()
+        self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
 
         self.harness.set_can_connect(container="nrf", val=True)
         self.harness.container_pebble_ready("nrf")
@@ -311,7 +336,7 @@ class TestCharm(unittest.TestCase):
         self, patch_check_output, patch_exists, patch_pull
     ):
         patch_check_output.return_value = b"1.1.1.1"
-        patch_exists.side_effect = [True, False, False, False]
+        patch_exists.side_effect = [True, True, False, False, False]
         patch_pull.side_effect = [
             StringIO(self._read_file("tests/unit/expected_config/config.conf").strip()),
             StringIO(self._read_file("tests/unit/expected_config/config.conf").strip()),
@@ -336,6 +361,7 @@ class TestCharm(unittest.TestCase):
         )
 
         self._database_is_available()
+        self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
 
         self.harness.container_pebble_ready("nrf")
 
@@ -345,8 +371,8 @@ class TestCharm(unittest.TestCase):
         relation_2_data = self.harness.get_relation_data(
             relation_id=relation_2_id, app_or_unit=self.harness.charm.app.name
         )
-        self.assertEqual(relation_1_data["url"], "http://nrf:29510")
-        self.assertEqual(relation_2_data["url"], "http://nrf:29510")
+        self.assertEqual(relation_1_data["url"], "https://nrf:29510")
+        self.assertEqual(relation_2_data["url"], "https://nrf:29510")
 
     @patch("charm.generate_private_key")
     @patch("ops.model.Container.push")
@@ -374,6 +400,25 @@ class TestCharm(unittest.TestCase):
         patch_remove_path.assert_any_call(path="/support/TLS/nrf.pem")
         patch_remove_path.assert_any_call(path="/support/TLS/nrf.key")
         patch_remove_path.assert_any_call(path="/support/TLS/nrf.csr")
+
+    @patch("ops.model.Container.push")
+    @patch("ops.model.Container.remove_path")
+    @patch("ops.model.Container.exists")
+    def test_given_certificates_are_stored_when_on_certificates_relation_broken_then_status_is_blocked(  # noqa: E501
+        self,
+        patch_exists,
+        patch_remove_path,
+        patch_push,
+    ):
+        patch_exists.return_value = True
+        self.harness.set_can_connect(container="nrf", val=True)
+        self._database_is_available()
+        self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
+        self.harness.charm._on_certificates_relation_broken(event=Mock())
+        self.assertEqual(
+            self.harness.charm.unit.status,
+            BlockedStatus(f"Waiting for {TLS_RELATION_NAME} relation to be created"),
+        )
 
     @patch(
         "charms.tls_certificates_interface.v2.tls_certificates.TLSCertificatesRequiresV2.request_certificate_creation",  # noqa: E501

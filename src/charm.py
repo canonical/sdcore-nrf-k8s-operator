@@ -138,9 +138,10 @@ class NRFOperatorCharm(CharmBase):
             self.unit.status = WaitingStatus("Waiting for container to be ready")
             event.defer()
             return
-        if not self._relation_created(DATABASE_RELATION_NAME):
-            self.unit.status = BlockedStatus("Waiting for database relation to be created")
-            return
+        for relation in [DATABASE_RELATION_NAME, "certificates"]:
+            if not self._relation_created(relation):
+                self.unit.status = BlockedStatus(f"Waiting for {relation} relation to be created")
+                return
         if not self._database_is_available():
             self.unit.status = WaitingStatus("Waiting for the database to be available")
             return
@@ -154,6 +155,10 @@ class NRFOperatorCharm(CharmBase):
             return
         if not _get_pod_ip():
             self.unit.status = WaitingStatus("Waiting for pod IP address to be available")
+            event.defer()
+            return
+        if not self._certificate_is_stored():
+            self.unit.status = WaitingStatus("Waiting for certificates to be stored")
             event.defer()
             return
         needs_restart = self._generate_config_file()
@@ -176,7 +181,7 @@ class NRFOperatorCharm(CharmBase):
         self._delete_private_key()
         self._delete_csr()
         self._delete_certificate()
-        self._configure_nrf(event)
+        self.unit.status = BlockedStatus("Waiting for certificates relation to be created")
 
     def _on_certificates_relation_joined(self, event: EventBase) -> None:
         """Generates CSR and requests new certificate."""
@@ -309,7 +314,7 @@ class NRFOperatorCharm(CharmBase):
             nrf_ip=_get_pod_ip(),  # type: ignore[arg-type]
             database_name=DATABASE_NAME,
             nrf_sbi_port=NRF_SBI_PORT,
-            scheme="https" if self._certificate_is_stored() else "http",
+            scheme="https",
         )
         if not self._config_file_content_matches(content=content):
             self._push_config_file(
@@ -462,10 +467,10 @@ class NRFOperatorCharm(CharmBase):
             return False
         return service.is_running()
 
-    def _get_nrf_url(self) -> str:
+    @staticmethod
+    def _get_nrf_url() -> str:
         """Returns NRF URL."""
-        scheme = "https" if self._certificate_is_stored() else "http"
-        return f"{scheme}://nrf:{NRF_SBI_PORT}"
+        return f"https://nrf:{NRF_SBI_PORT}"
 
 
 if __name__ == "__main__":
