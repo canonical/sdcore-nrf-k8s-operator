@@ -31,7 +31,7 @@ async def deploy_self_signed_certificates(ops_test):
     await ops_test.model.deploy(
         TLS_APPLICATION_NAME,
         application_name=TLS_APPLICATION_NAME,
-        channel="edge",
+        channel="beta",
     )
 
 
@@ -73,3 +73,23 @@ async def test_given_charm_is_deployed_when_relate_to_mongo_and_certificates_the
         relation1=f"{APP_NAME}:certificates", relation2=f"{TLS_APPLICATION_NAME}:certificates"
     )
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)
+
+
+@pytest.mark.abort_on_fail
+async def test_remove_tls_and_wait_for_blocked_status(ops_test, build_and_deploy):
+    await ops_test.model.remove_application(TLS_APPLICATION_NAME, block_until_done=True)  # type: ignore[union-attr]  # noqa: E501
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", timeout=60)  # type: ignore[union-attr]  # noqa: E501
+
+
+@pytest.mark.abort_on_fail
+async def test_restore_tls_and_wait_for_active_status(ops_test, build_and_deploy):
+    await ops_test.model.deploy(  # type: ignore[union-attr]
+        TLS_APPLICATION_NAME,
+        application_name=TLS_APPLICATION_NAME,
+        channel="beta",
+        trust=True,
+    )
+    await ops_test.model.add_relation(  # type: ignore[union-attr]
+        relation1=APP_NAME, relation2=TLS_APPLICATION_NAME
+    )
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)  # type: ignore[union-attr]  # noqa: E501
