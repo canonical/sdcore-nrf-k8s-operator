@@ -31,7 +31,7 @@ async def deploy_self_signed_certificates(ops_test):
     await ops_test.model.deploy(
         TLS_APPLICATION_NAME,
         application_name=TLS_APPLICATION_NAME,
-        channel="edge",
+        channel="beta",
     )
 
 
@@ -86,7 +86,7 @@ async def test_restore_tls_and_wait_for_active_status(ops_test, build_and_deploy
     await ops_test.model.deploy(  # type: ignore[union-attr]
         TLS_APPLICATION_NAME,
         application_name=TLS_APPLICATION_NAME,
-        channel="edge",
+        channel="beta",
         trust=True,
     )
     await ops_test.model.add_relation(  # type: ignore[union-attr]
