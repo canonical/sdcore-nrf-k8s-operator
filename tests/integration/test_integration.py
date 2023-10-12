@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from pytest_operator.plugin import OpsTest
 
 logger = logging.getLogger(__name__)
 
@@ -64,12 +65,13 @@ async def test_given_charm_is_built_when_deployed_then_status_is_blocked(
 
 
 async def test_given_charm_is_deployed_when_relate_to_mongo_and_certificates_then_status_is_active(
-    ops_test, build_and_deploy
+    ops_test: OpsTest, build_and_deploy
 ):
-    await ops_test.model.add_relation(
+    assert ops_test.model
+    await ops_test.model.integrate(
         relation1=f"{APP_NAME}:database", relation2=f"{DB_APPLICATION_NAME}:database"
     )
-    await ops_test.model.add_relation(
+    await ops_test.model.integrate(
         relation1=f"{APP_NAME}:certificates", relation2=f"{TLS_APPLICATION_NAME}:certificates"
     )
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)
@@ -82,14 +84,13 @@ async def test_remove_tls_and_wait_for_blocked_status(ops_test, build_and_deploy
 
 
 @pytest.mark.abort_on_fail
-async def test_restore_tls_and_wait_for_active_status(ops_test, build_and_deploy):
-    await ops_test.model.deploy(  # type: ignore[union-attr]
+async def test_restore_tls_and_wait_for_active_status(ops_test: OpsTest, build_and_deploy):
+    assert ops_test.model
+    await ops_test.model.deploy(
         TLS_APPLICATION_NAME,
         application_name=TLS_APPLICATION_NAME,
         channel="beta",
         trust=True,
     )
-    await ops_test.model.add_relation(  # type: ignore[union-attr]
-        relation1=APP_NAME, relation2=TLS_APPLICATION_NAME
-    )
-    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)  # type: ignore[union-attr]  # noqa: E501
+    await ops_test.model.integrate(relation1=APP_NAME, relation2=TLS_APPLICATION_NAME)
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)
