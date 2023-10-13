@@ -23,6 +23,7 @@ from charms.tls_certificates_interface.v2.tls_certificates import (  # type: ign
 )
 from jinja2 import Environment, FileSystemLoader  # type: ignore[import]
 from lightkube.models.core_v1 import ServicePort
+from ops import RelationBrokenEvent, RelationCreatedEvent
 from ops.charm import CharmBase, EventBase, RelationJoinedEvent
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, ModelError, WaitingStatus
@@ -91,7 +92,13 @@ class NRFOperatorCharm(CharmBase):
         """Initialize charm."""
         super().__init__(*args)
         if not self.unit.is_leader():
-            raise NotImplementedError("Scaling is not implemented for this charm")
+            # NOTE: In cases where leader status is lost before the charm is
+            # finished processing all teardown events, this prevents teardown
+            # event code from running. Luckily, for this charm, none of the
+            # teardown code is necessary to preform if we're removing the
+            # charm.
+            self.unit.status = BlockedStatus("Scaling is not implemented for this charm")
+            return
         self._container_name = self._service_name = "nrf"
         self._container = self.unit.get_container(self._container_name)
         self._database = DatabaseRequires(
@@ -166,14 +173,14 @@ class NRFOperatorCharm(CharmBase):
         self._publish_nrf_info_for_all_requirers()
         self.unit.status = ActiveStatus()
 
-    def _on_certificates_relation_created(self, event: EventBase) -> None:
+    def _on_certificates_relation_created(self, event: RelationCreatedEvent) -> None:
         """Generates Private key."""
         if not self._container.can_connect():
             event.defer()
             return
         self._generate_private_key()
 
-    def _on_certificates_relation_broken(self, event: EventBase) -> None:
+    def _on_certificates_relation_broken(self, event: RelationBrokenEvent) -> None:
         """Deletes TLS related artifacts and reconfigures workload."""
         if not self._container.can_connect():
             event.defer()
@@ -183,7 +190,7 @@ class NRFOperatorCharm(CharmBase):
         self._delete_certificate()
         self.unit.status = BlockedStatus("Waiting for certificates relation to be created")
 
-    def _on_certificates_relation_joined(self, event: EventBase) -> None:
+    def _on_certificates_relation_joined(self, event: RelationJoinedEvent) -> None:
         """Generates CSR and requests new certificate."""
         if not self._container.can_connect():
             event.defer()
