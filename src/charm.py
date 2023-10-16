@@ -173,14 +173,14 @@ class NRFOperatorCharm(CharmBase):
         self._publish_nrf_info_for_all_requirers()
         self.unit.status = ActiveStatus()
 
-    def _on_certificates_relation_created(self, event: RelationCreatedEvent) -> None:
+    def _on_certificates_relation_created(self, event: EventBase) -> None:
         """Generates Private key."""
         if not self._container.can_connect():
             event.defer()
             return
         self._generate_private_key()
 
-    def _on_certificates_relation_broken(self, event: RelationBrokenEvent) -> None:
+    def _on_certificates_relation_broken(self, event: EventBase) -> None:
         """Deletes TLS related artifacts and reconfigures workload."""
         if not self._container.can_connect():
             event.defer()
@@ -190,7 +190,7 @@ class NRFOperatorCharm(CharmBase):
         self._delete_certificate()
         self.unit.status = BlockedStatus("Waiting for certificates relation to be created")
 
-    def _on_certificates_relation_joined(self, event: RelationJoinedEvent) -> None:
+    def _on_certificates_relation_joined(self, event: EventBase) -> None:
         """Generates CSR and requests new certificate."""
         if not self._container.can_connect():
             event.defer()
