@@ -3,8 +3,8 @@
 # See LICENSE file for licensing details.
 
 
-from collections import Counter
 import logging
+from collections import Counter
 from pathlib import Path
 
 import pytest
