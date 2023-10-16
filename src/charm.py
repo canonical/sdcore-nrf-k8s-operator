@@ -23,7 +23,6 @@ from charms.tls_certificates_interface.v2.tls_certificates import (  # type: ign
 )
 from jinja2 import Environment, FileSystemLoader  # type: ignore[import]
 from lightkube.models.core_v1 import ServicePort
-from ops import RelationBrokenEvent, RelationCreatedEvent
 from ops.charm import CharmBase, EventBase, RelationJoinedEvent
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, ModelError, WaitingStatus
