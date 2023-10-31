@@ -24,7 +24,7 @@ TLS_APPLICATION_NAME = "self-signed-certificates"
 @pytest.mark.abort_on_fail
 async def deploy_mongodb(ops_test):
     await ops_test.model.deploy(
-        "mongodb-k8s", application_name=DB_APPLICATION_NAME, channel="5/edge", trust=True
+        "mongodb-k8s", application_name=DB_APPLICATION_NAME, channel="6/edge", trust=True
     )
 
 
