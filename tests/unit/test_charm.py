@@ -44,7 +44,7 @@ class TestCharm(unittest.TestCase):
         )
         return relation_id
 
-    def _database_is_available(self) -> None:
+    def _database_is_available(self) -> int:
         """Create a database relation and set the database information."""
         database_relation_id = self._create_database_relation()
         self.harness.update_relation_data(
@@ -56,6 +56,7 @@ class TestCharm(unittest.TestCase):
                 "uris": "http://dummy",
             },
         )
+        return database_relation_id
 
     @staticmethod
     def _read_file(path: str) -> str:
@@ -88,6 +89,33 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(
             self.harness.model.unit.status,
             BlockedStatus(f"Waiting for {TLS_RELATION_NAME} relation to be created"),
+        )
+
+    @patch("ops.model.Container.pull")
+    @patch("ops.model.Container.exists")
+    @patch("ops.model.Container.push")
+    @patch("charm.check_output")
+    def test_given_nrf_charm_in_active_state_when_database_relation_breaks_then_status_is_blocked(
+        self,
+        patch_check_output,
+        patch_push,
+        patch_exists,
+        patch_pull,
+    ):
+        patch_check_output.return_value = b"1.1.1.1"
+        patch_pull.return_value = StringIO(
+            self._read_file("tests/unit/expected_config/config.conf").strip()
+        )
+        patch_exists.return_value = True
+        database_relation_id = self._database_is_available()
+        self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
+        self.harness.container_pebble_ready(container_name="nrf")
+
+        self.harness.remove_relation(database_relation_id)
+
+        self.assertEqual(
+            self.harness.model.unit.status,
+            BlockedStatus("Waiting for database relation"),
         )
 
     def test_given_database_not_available_when_pebble_ready_then_status_is_waiting(
