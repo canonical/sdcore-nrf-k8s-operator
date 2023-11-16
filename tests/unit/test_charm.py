@@ -44,8 +44,12 @@ class TestCharm(unittest.TestCase):
         )
         return relation_id
 
-    def _database_is_available(self) -> int:
-        """Create a database relation and set the database information."""
+    def _create_database_relation_and_populate_data(self) -> int:
+        """Create a database relation and set the database information.
+
+        Returns:
+            relation_id: ID of the created relation
+        """
         database_relation_id = self._create_database_relation()
         self.harness.update_relation_data(
             relation_id=database_relation_id,
@@ -107,7 +111,7 @@ class TestCharm(unittest.TestCase):
             self._read_file("tests/unit/expected_config/config.conf").strip()
         )
         patch_exists.return_value = True
-        database_relation_id = self._database_is_available()
+        database_relation_id = self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.container_pebble_ready(container_name="nrf")
 
@@ -146,7 +150,7 @@ class TestCharm(unittest.TestCase):
     def test_given_storage_not_attached_when_pebble_ready_then_status_is_waiting(
         self,
     ):
-        self._database_is_available()
+        self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.container_pebble_ready(container_name="nrf")
         self.assertEqual(
@@ -170,7 +174,7 @@ class TestCharm(unittest.TestCase):
         patch_check_output.return_value = b"1.1.1.1"
         patch_exists.side_effect = [True, False, True, False]
         self.harness.set_can_connect(container="nrf", val=True)
-        self._database_is_available()
+        self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.container_pebble_ready("nrf")
         self.assertEqual(
@@ -201,7 +205,7 @@ class TestCharm(unittest.TestCase):
         event.certificate_signing_request = csr
         patch_pull.side_effect = [StringIO(csr), StringIO("Dummy Content")]
         patch_exists.side_effect = [True, True, False, False]
-        self._database_is_available()
+        self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.charm._on_certificate_available(event=event)
         self.harness.container_pebble_ready(container_name="nrf")
@@ -228,7 +232,7 @@ class TestCharm(unittest.TestCase):
             StringIO(self._read_file("tests/unit/expected_config/config.conf").strip()),
         ]
         patch_exists.side_effect = [True, False, True]
-        self._database_is_available()
+        self._create_database_relation_and_populate_data()
         self.harness.container_pebble_ready(container_name="nrf")
         patch_push.assert_not_called()
 
@@ -249,7 +253,7 @@ class TestCharm(unittest.TestCase):
         )
         patch_exists.return_value = True
 
-        self._database_is_available()
+        self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
 
         self.harness.container_pebble_ready(container_name="nrf")
@@ -292,7 +296,7 @@ class TestCharm(unittest.TestCase):
         )
         patch_exists.return_value = True
 
-        self._database_is_available()
+        self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
 
         self.harness.container_pebble_ready("nrf")
@@ -316,7 +320,7 @@ class TestCharm(unittest.TestCase):
         )
         patch_exists.return_value = True
 
-        self._database_is_available()
+        self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
 
         self.harness.container_pebble_ready(container_name="nrf")
@@ -340,7 +344,7 @@ class TestCharm(unittest.TestCase):
             self._read_file("tests/unit/expected_config/config.conf").strip()
         )
 
-        self._database_is_available()
+        self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
 
         self.harness.set_can_connect(container="nrf", val=True)
@@ -388,7 +392,7 @@ class TestCharm(unittest.TestCase):
             relation_id=relation_2_id, remote_unit_name="nrf-requirer-2/0"
         )
 
-        self._database_is_available()
+        self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
 
         self.harness.container_pebble_ready("nrf")
@@ -440,7 +444,7 @@ class TestCharm(unittest.TestCase):
     ):
         patch_exists.return_value = True
         self.harness.set_can_connect(container="nrf", val=True)
-        self._database_is_available()
+        self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.charm._on_certificates_relation_broken(event=Mock())
         self.assertEqual(
