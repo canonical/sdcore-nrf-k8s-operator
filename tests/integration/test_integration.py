@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 DB_APPLICATION_NAME = "mongodb"
+DB_CHARM_NAME = "mongodb-k8s"
 TLS_APPLICATION_NAME = "self-signed-certificates"
 
 
@@ -24,7 +25,7 @@ TLS_APPLICATION_NAME = "self-signed-certificates"
 @pytest.mark.abort_on_fail
 async def deploy_mongodb(ops_test):
     await ops_test.model.deploy(
-        "mongodb-k8s", application_name=DB_APPLICATION_NAME, channel="5/edge", trust=True
+        DB_CHARM_NAME, application_name=DB_APPLICATION_NAME, channel="5/edge", trust=True
     )
 
 
@@ -95,6 +96,32 @@ async def test_restore_tls_and_wait_for_active_status(ops_test: OpsTest, build_a
         trust=True,
     )
     await ops_test.model.integrate(relation1=APP_NAME, relation2=TLS_APPLICATION_NAME)
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)
+
+
+@pytest.mark.skip(
+    reason="Bug in MongoDB: https://github.com/canonical/mongodb-k8s-operator/issues/218"
+)
+@pytest.mark.abort_on_fail
+async def test_remove_database_and_wait_for_blocked_status(ops_test: OpsTest, build_and_deploy):
+    assert ops_test.model
+    await ops_test.model.remove_application(DB_APPLICATION_NAME, block_until_done=True)
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", timeout=60)
+
+
+@pytest.mark.skip(
+    reason="Bug in MongoDB: https://github.com/canonical/mongodb-k8s-operator/issues/218"
+)
+@pytest.mark.abort_on_fail
+async def test_restore_database_and_wait_for_active_status(ops_test: OpsTest, build_and_deploy):
+    assert ops_test.model
+    await ops_test.model.deploy(
+        DB_CHARM_NAME,
+        application_name=DB_APPLICATION_NAME,
+        channel="5/edge",
+        trust=True,
+    )
+    await ops_test.model.integrate(relation1=APP_NAME, relation2=DB_APPLICATION_NAME)
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)
 
 
