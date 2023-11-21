@@ -205,7 +205,6 @@ class TestCharm(unittest.TestCase):
                 (root / f"etc/nrf/{CONFIG_FILE_NAME}").read_text(), expected_content.strip()
             )
 
-    # FIXME
     @patch("charm.check_output")
     def test_given_content_of_config_file_not_changed_when_pebble_ready_then_config_file_is_not_pushed(  # noqa: E501
         self,
@@ -219,10 +218,14 @@ class TestCharm(unittest.TestCase):
         (root / f"etc/nrf/{CONFIG_FILE_NAME}").write_text(
             self._read_file("tests/unit/expected_config/config.conf").strip()
         )
+        config_modification_time = (root / f"etc/nrf/{CONFIG_FILE_NAME}").stat().st_mtime
         patch_check_output.return_value = b"1.1.1.1"
         self.harness.set_can_connect(container="nrf", val=True)
         self._create_database_relation_and_populate_data()
         self.harness.container_pebble_ready(container_name="nrf")
+        self.assertEqual(
+            (root / f"etc/nrf/{CONFIG_FILE_NAME}").stat().st_mtime, config_modification_time
+        )
 
     @patch("charm.check_output")
     def test_given_config_pushed_when_pebble_ready_then_pebble_plan_is_applied(
