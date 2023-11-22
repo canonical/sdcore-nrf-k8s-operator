@@ -2,7 +2,6 @@
 # See LICENSE file for licensing details.
 
 import unittest
-from io import StringIO
 from unittest.mock import Mock, patch
 
 from ops import testing
@@ -95,22 +94,17 @@ class TestCharm(unittest.TestCase):
             BlockedStatus(f"Waiting for {TLS_RELATION_NAME} relation to be created"),
         )
 
-    @patch("ops.model.Container.pull")
-    @patch("ops.model.Container.exists")
-    @patch("ops.model.Container.push")
     @patch("charm.check_output")
     def test_given_nrf_charm_in_active_state_when_database_relation_breaks_then_status_is_blocked(
         self,
         patch_check_output,
-        patch_push,
-        patch_exists,
-        patch_pull,
     ):
+        self.harness.add_storage("config", attach=True)
+        self.harness.add_storage("certs", attach=True)
+        certificate = "Whatever certificate content"
+        root = self.harness.get_filesystem_root("nrf")
+        (root / "support/TLS/nrf.pem").write_text(certificate)
         patch_check_output.return_value = b"1.1.1.1"
-        patch_pull.return_value = StringIO(
-            self._read_file("tests/unit/expected_config/config.conf").strip()
-        )
-        patch_exists.return_value = True
         database_relation_id = self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.container_pebble_ready(container_name="nrf")
@@ -158,21 +152,18 @@ class TestCharm(unittest.TestCase):
             WaitingStatus("Waiting for storage to be attached"),
         )
 
-    @patch("ops.model.Container.exists")
-    @patch("ops.model.Container.push")
     @patch("charm.check_output")
     @patch("charm.generate_private_key")
     def test_given_certificates_not_stored_when_pebble_ready_then_status_is_waiting(
         self,
         patch_generate_private_key,
         patch_check_output,
-        patch_push,
-        patch_exists,
     ):
+        self.harness.add_storage("config", attach=True)
+        self.harness.add_storage("certs", attach=True)
         private_key = b"whatever key content"
         patch_generate_private_key.return_value = private_key
         patch_check_output.return_value = b"1.1.1.1"
-        patch_exists.side_effect = [True, False, True, False]
         self.harness.set_can_connect(container="nrf", val=True)
         self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
@@ -182,77 +173,76 @@ class TestCharm(unittest.TestCase):
             WaitingStatus("Waiting for certificates to be stored"),
         )
 
-    @patch("ops.model.Container.exists")
-    @patch("ops.model.Container.push")
-    @patch("ops.model.Container.pull")
     @patch("charm.check_output")
     @patch("charm.generate_private_key")
     def test_given_database_info_and_storage_attached_and_certs_stored_when_pebble_ready_then_config_file_is_rendered_and_pushed(  # noqa: E501
         self,
         patch_generate_private_key,
         patch_check_output,
-        patch_pull,
-        patch_push,
-        patch_exists,
     ):
+        self.harness.add_storage("config", attach=True)
+        self.harness.add_storage("certs", attach=True)
+        root = self.harness.get_filesystem_root("nrf")
         private_key = b"whatever key content"
         patch_generate_private_key.return_value = private_key
         patch_check_output.return_value = b"1.1.1.1"
         csr = "Whatever CSR content"
+        (root / "support/TLS/nrf.csr").write_text(csr)
+        (root / f"etc/nrf/{CONFIG_FILE_NAME}").write_text("Dummy Content")
         certificate = "Whatever certificate content"
         event = Mock()
         event.certificate = certificate
         event.certificate_signing_request = csr
-        patch_pull.side_effect = [StringIO(csr), StringIO("Dummy Content")]
-        patch_exists.side_effect = [True, True, False, False]
+        self.harness.set_can_connect(container="nrf", val=True)
         self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.charm._on_certificate_available(event=event)
         self.harness.container_pebble_ready(container_name="nrf")
+        self.assertEqual(self.harness.model.unit.status, ActiveStatus(""))
         with open("tests/unit/expected_config/config.conf") as expected_config_file:
             expected_content = expected_config_file.read()
-            patch_push.assert_called_with(
-                path=f"{BASE_CONFIG_PATH}/{CONFIG_FILE_NAME}",
-                source=expected_content.strip(),
+            self.assertEqual(
+                (root / f"etc/nrf/{CONFIG_FILE_NAME}").read_text(), expected_content.strip()
             )
 
-    @patch("ops.model.Container.exists")
-    @patch("ops.model.Container.push")
-    @patch("ops.model.Container.pull")
     @patch("charm.check_output")
     def test_given_content_of_config_file_not_changed_when_pebble_ready_then_config_file_is_not_pushed(  # noqa: E501
         self,
         patch_check_output,
-        patch_pull,
-        patch_push,
-        patch_exists,
     ):
+        self.harness.add_storage("config", attach=True)
+        self.harness.add_storage("certs", attach=True)
+        certificate = "Whatever certificate content"
+        root = self.harness.get_filesystem_root("nrf")
+        (root / "support/TLS/nrf.pem").write_text(certificate)
+        (root / f"etc/nrf/{CONFIG_FILE_NAME}").write_text(
+            self._read_file("tests/unit/expected_config/config.conf").strip()
+        )
+        config_modification_time = (root / f"etc/nrf/{CONFIG_FILE_NAME}").stat().st_mtime
         patch_check_output.return_value = b"1.1.1.1"
-        patch_pull.side_effect = [
-            StringIO(self._read_file("tests/unit/expected_config/config.conf").strip()),
-        ]
-        patch_exists.side_effect = [True, False, True]
+        self.harness.set_can_connect(container="nrf", val=True)
         self._create_database_relation_and_populate_data()
         self.harness.container_pebble_ready(container_name="nrf")
-        patch_push.assert_not_called()
+        self.assertEqual(
+            (root / f"etc/nrf/{CONFIG_FILE_NAME}").stat().st_mtime, config_modification_time
+        )
 
-    @patch("ops.model.Container.exists")
-    @patch("ops.model.Container.push")
-    @patch("ops.model.Container.pull")
     @patch("charm.check_output")
     def test_given_config_pushed_when_pebble_ready_then_pebble_plan_is_applied(
         self,
         patch_check_output,
-        patch_pull,
-        patch_push,
-        patch_exists,
     ):
         patch_check_output.return_value = b"1.1.1.1"
-        patch_pull.return_value = StringIO(
+        self.harness.add_storage("config", attach=True)
+        self.harness.add_storage("certs", attach=True)
+        certificate = "Whatever certificate content"
+        root = self.harness.get_filesystem_root("nrf")
+        (root / "support/TLS/nrf.pem").write_text(certificate)
+        (root / f"etc/nrf/{CONFIG_FILE_NAME}").write_text(
             self._read_file("tests/unit/expected_config/config.conf").strip()
         )
-        patch_exists.return_value = True
 
+        self.harness.set_can_connect(container="nrf", val=True)
         self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
 
@@ -279,22 +269,22 @@ class TestCharm(unittest.TestCase):
 
         self.assertEqual(expected_plan, updated_plan)
 
-    @patch("ops.model.Container.pull")
-    @patch("ops.model.Container.exists")
-    @patch("ops.model.Container.push")
     @patch("charm.check_output")
     def test_given_database_relation_is_created_and_config_file_is_written_when_pebble_ready_then_status_is_active(  # noqa: E501
         self,
         patch_check_output,
-        patch_push,
-        patch_exists,
-        patch_pull,
     ):
         patch_check_output.return_value = b"1.1.1.1"
-        patch_pull.return_value = StringIO(
+        self.harness.add_storage("config", attach=True)
+        self.harness.add_storage("certs", attach=True)
+        certificate = "Whatever certificate content"
+        root = self.harness.get_filesystem_root("nrf")
+        (root / "support/TLS/nrf.pem").write_text(certificate)
+        (root / f"etc/nrf/{CONFIG_FILE_NAME}").write_text(
             self._read_file("tests/unit/expected_config/config.conf").strip()
         )
-        patch_exists.return_value = True
+
+        self.harness.set_can_connect(container="nrf", val=True)
 
         self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
@@ -303,27 +293,26 @@ class TestCharm(unittest.TestCase):
 
         self.assertEqual(self.harness.model.unit.status, ActiveStatus())
 
-    @patch("ops.model.Container.pull")
-    @patch("ops.model.Container.exists")
-    @patch("ops.model.Container.push")
     @patch("charm.check_output")
     def test_given_ip_not_available_when_pebble_ready_then_status_is_waiting(
         self,
         patch_check_output,
-        patch_push,
-        patch_exists,
-        patch_pull,
     ):
         patch_check_output.return_value = b""
-        patch_pull.return_value = StringIO(
+        self.harness.add_storage("config", attach=True)
+        self.harness.add_storage("certs", attach=True)
+        certificate = "Whatever certificate content"
+        root = self.harness.get_filesystem_root("nrf")
+        (root / "support/TLS/nrf.pem").write_text(certificate)
+        (root / f"etc/nrf/{CONFIG_FILE_NAME}").write_text(
             self._read_file("tests/unit/expected_config/config.conf").strip()
         )
-        patch_exists.return_value = True
+
+        self.harness.set_can_connect(container="nrf", val=True)
 
         self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
 
-        self.harness.container_pebble_ready(container_name="nrf")
         self.harness.container_pebble_ready("nrf")
 
         self.assertEqual(
@@ -331,16 +320,18 @@ class TestCharm(unittest.TestCase):
             WaitingStatus("Waiting for pod IP address to be available"),
         )
 
-    @patch("ops.model.Container.push", new=Mock)
-    @patch("ops.model.Container.pull")
-    @patch("ops.model.Container.exists")
     @patch("charm.check_output")
     def test_given_https_nrf_url_and_service_is_running_when_fiveg_nrf_relation_joined_then_nrf_url_is_in_relation_databag(  # noqa: E501
-        self, patch_check_output, patch_exists, patch_pull
+        self,
+        patch_check_output,
     ):
         patch_check_output.return_value = b"1.1.1.1"
-        patch_exists.return_value = True
-        patch_pull.return_value = StringIO(
+        self.harness.add_storage("config", attach=True)
+        self.harness.add_storage("certs", attach=True)
+        certificate = "Whatever certificate content"
+        root = self.harness.get_filesystem_root("nrf")
+        (root / "support/TLS/nrf.pem").write_text(certificate)
+        (root / f"etc/nrf/{CONFIG_FILE_NAME}").write_text(
             self._read_file("tests/unit/expected_config/config.conf").strip()
         )
 
@@ -360,19 +351,19 @@ class TestCharm(unittest.TestCase):
         )
         self.assertEqual(relation_data["url"], "https://nrf:29510")
 
-    @patch("ops.model.Container.push", new=Mock)
-    @patch("ops.model.Container.pull")
-    @patch("ops.model.Container.exists")
     @patch("charm.check_output")
     def test_service_starts_running_after_nrf_relation_joined_when_fiveg_pebble_ready_then_nrf_url_is_in_relation_databag(  # noqa: E501
-        self, patch_check_output, patch_exists, patch_pull
+        self, patch_check_output
     ):
         patch_check_output.return_value = b"1.1.1.1"
-        patch_exists.side_effect = [True, True, False, False, False]
-        patch_pull.side_effect = [
-            StringIO(self._read_file("tests/unit/expected_config/config.conf").strip()),
-            StringIO(self._read_file("tests/unit/expected_config/config.conf").strip()),
-        ]
+        self.harness.add_storage("config", attach=True)
+        self.harness.add_storage("certs", attach=True)
+        certificate = "Whatever certificate content"
+        root = self.harness.get_filesystem_root("nrf")
+        (root / "support/TLS/nrf.pem").write_text(certificate)
+        (root / f"etc/nrf/{CONFIG_FILE_NAME}").write_text(
+            self._read_file("tests/unit/expected_config/config.conf").strip()
+        )
 
         self.harness.set_can_connect(container="nrf", val=False)
 
@@ -407,42 +398,51 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(relation_2_data["url"], "https://nrf:29510")
 
     @patch("charm.generate_private_key")
-    @patch("ops.model.Container.push")
     def test_given_can_connect_when_on_certificates_relation_created_then_private_key_is_generated(
-        self, patch_push, patch_generate_private_key
+        self, patch_generate_private_key
     ):
         private_key = b"whatever key content"
+        self.harness.add_storage("config", attach=True)
+        self.harness.add_storage("certs", attach=True)
+        root = self.harness.get_filesystem_root("nrf")
         self.harness.set_can_connect(container="nrf", val=True)
         patch_generate_private_key.return_value = private_key
 
         self.harness.charm._on_certificates_relation_created(event=Mock)
 
-        patch_push.assert_called_with(path="/support/TLS/nrf.key", source=private_key.decode())
+        self.assertEqual((root / "support/TLS/nrf.key").read_text(), private_key.decode())
 
-    @patch("ops.model.Container.remove_path")
-    @patch("ops.model.Container.exists")
     def test_given_certificates_are_stored_when_on_certificates_relation_broken_then_certificates_are_removed(  # noqa: E501
-        self, patch_exists, patch_remove_path
+        self,
     ):
-        patch_exists.return_value = True
+        self.harness.add_storage("certs", attach=True)
+        private_key = "whatever key content"
+        csr = "Whatever CSR content"
+        certificate = "Whatever certificate content"
+        root = self.harness.get_filesystem_root("nrf")
+        (root / "support/TLS/nrf.key").write_text(private_key)
+        (root / "support/TLS/nrf.csr").write_text(csr)
+        (root / "support/TLS/nrf.pem").write_text(certificate)
         self.harness.set_can_connect(container="nrf", val=True)
 
         self.harness.charm._on_certificates_relation_broken(event=Mock)
 
-        patch_remove_path.assert_any_call(path="/support/TLS/nrf.pem")
-        patch_remove_path.assert_any_call(path="/support/TLS/nrf.key")
-        patch_remove_path.assert_any_call(path="/support/TLS/nrf.csr")
+        with self.assertRaises(FileNotFoundError):
+            (root / "support/TLS/nrf.key").read_text()
+            (root / "support/TLS/nrf.pem").read_text()
+            (root / "support/TLS/nrf.csr").read_text()
 
-    @patch("ops.model.Container.push")
-    @patch("ops.model.Container.remove_path")
-    @patch("ops.model.Container.exists")
     def test_given_certificates_are_stored_when_on_certificates_relation_broken_then_status_is_blocked(  # noqa: E501
         self,
-        patch_exists,
-        patch_remove_path,
-        patch_push,
     ):
-        patch_exists.return_value = True
+        self.harness.add_storage("certs", attach=True)
+        private_key = "whatever key content"
+        csr = "Whatever CSR content"
+        certificate = "Whatever certificate content"
+        root = self.harness.get_filesystem_root("nrf")
+        (root / "support/TLS/nrf.key").write_text(private_key)
+        (root / "support/TLS/nrf.csr").write_text(csr)
+        (root / "support/TLS/nrf.pem").write_text(certificate)
         self.harness.set_can_connect(container="nrf", val=True)
         self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
@@ -456,41 +456,37 @@ class TestCharm(unittest.TestCase):
         "charms.tls_certificates_interface.v2.tls_certificates.TLSCertificatesRequiresV2.request_certificate_creation",  # noqa: E501
         new=Mock,
     )
-    @patch("ops.model.Container.push")
     @patch("charm.generate_csr")
-    @patch("ops.model.Container.pull")
-    @patch("ops.model.Container.exists")
     def test_given_private_key_exists_when_on_certificates_relation_joined_then_csr_is_generated(
-        self, patch_exists, patch_pull, patch_generate_csr, patch_push
+        self, patch_generate_csr
     ):
+        self.harness.add_storage("certs", attach=True)
+        private_key = "whatever key content"
+        root = self.harness.get_filesystem_root("nrf")
+        (root / "support/TLS/nrf.key").write_text(private_key)
         csr = b"whatever csr content"
         patch_generate_csr.return_value = csr
-        patch_pull.return_value = StringIO("private key content")
-        patch_exists.side_effect = [True, False]
         self.harness.set_can_connect(container="nrf", val=True)
 
         self.harness.charm._on_certificates_relation_joined(event=Mock)
 
-        patch_push.assert_called_with(path="/support/TLS/nrf.csr", source=csr.decode())
+        self.assertEqual((root / "support/TLS/nrf.csr").read_text(), csr.decode())
 
     @patch(
         "charms.tls_certificates_interface.v2.tls_certificates.TLSCertificatesRequiresV2.request_certificate_creation",  # noqa: E501
     )
-    @patch("ops.model.Container.push", new=Mock)
     @patch("charm.generate_csr")
-    @patch("ops.model.Container.pull")
-    @patch("ops.model.Container.exists")
     def test_given_private_key_exists_and_cert_not_yet_requested_when_on_certificates_relation_joined_then_cert_is_requested(  # noqa: E501
         self,
-        patch_exists,
-        patch_pull,
         patch_generate_csr,
         patch_request_certificate_creation,
     ):
+        self.harness.add_storage("certs", attach=True)
+        private_key = "whatever key content"
+        root = self.harness.get_filesystem_root("nrf")
+        (root / "support/TLS/nrf.key").write_text(private_key)
         csr = b"whatever csr content"
         patch_generate_csr.return_value = csr
-        patch_pull.return_value = StringIO("private key content")
-        patch_exists.side_effect = [True, False]
         self.harness.set_can_connect(container="nrf", val=True)
 
         self.harness.charm._on_certificates_relation_joined(event=Mock)
@@ -500,36 +496,30 @@ class TestCharm(unittest.TestCase):
     @patch(
         "charms.tls_certificates_interface.v2.tls_certificates.TLSCertificatesRequiresV2.request_certificate_creation",  # noqa: E501
     )
-    @patch("ops.model.Container.push", new=Mock)
-    @patch("ops.model.Container.pull")
-    @patch("ops.model.Container.exists")
     def test_given_cert_already_stored_when_on_certificates_relation_joined_then_cert_is_not_requested(  # noqa: E501
         self,
-        patch_exists,
-        patch_pull,
         patch_request_certificate_creation,
     ):
-        patch_pull.return_value = StringIO("private key content")
-        patch_exists.return_value = True
+        self.harness.add_storage("certs", attach=True)
+        private_key = "whatever key content"
+        certificate = "Whatever certificate content"
+        root = self.harness.get_filesystem_root("nrf")
+        (root / "support/TLS/nrf.key").write_text(private_key)
+        (root / "support/TLS/nrf.pem").write_text(certificate)
         self.harness.set_can_connect(container="nrf", val=True)
 
         self.harness.charm._on_certificates_relation_joined(event=Mock)
 
-        patch_request_certificate_creation.assert_not_called
+        patch_request_certificate_creation.assert_not_called()
 
-    @patch("ops.model.Container.pull")
-    @patch("ops.model.Container.exists")
-    @patch("ops.model.Container.push")
     def test_given_csr_matches_stored_one_when_certificate_available_then_certificate_is_pushed(
         self,
-        patch_push,
-        patch_exists,
-        patch_pull,
     ):
+        self.harness.add_storage("certs", attach=True)
         csr = "Whatever CSR content"
-        patch_pull.return_value = StringIO(csr)
-        patch_exists.return_value = True
         certificate = "Whatever certificate content"
+        root = self.harness.get_filesystem_root("nrf")
+        (root / "support/TLS/nrf.csr").write_text(csr)
         event = Mock()
         event.certificate = certificate
         event.certificate_signing_request = csr
@@ -537,20 +527,16 @@ class TestCharm(unittest.TestCase):
 
         self.harness.charm._on_certificate_available(event=event)
 
-        patch_push.assert_called_with(path="/support/TLS/nrf.pem", source=certificate)
+        self.assertEqual((root / "support/TLS/nrf.pem").read_text(), certificate)
 
-    @patch("ops.model.Container.pull")
-    @patch("ops.model.Container.exists")
-    @patch("ops.model.Container.push")
     def test_given_csr_doesnt_match_stored_one_when_certificate_available_then_certificate_is_not_pushed(  # noqa: E501
         self,
-        patch_push,
-        patch_exists,
-        patch_pull,
     ):
-        patch_pull.return_value = StringIO("Stored CSR content")
-        patch_exists.return_value = True
+        self.harness.add_storage("certs", attach=True)
+        csr = "Stored CSR content"
         certificate = "Whatever certificate content"
+        root = self.harness.get_filesystem_root("nrf")
+        (root / "support/TLS/nrf.csr").write_text(csr)
         event = Mock()
         event.certificate = certificate
         event.certificate_signing_request = "Relation CSR content (different from stored one)"
@@ -558,19 +544,21 @@ class TestCharm(unittest.TestCase):
 
         self.harness.charm._on_certificate_available(event=event)
 
-        patch_push.assert_not_called()
+        with self.assertRaises(FileNotFoundError):
+            (root / "support/TLS/nrf.pem").read_text()
 
     @patch(
         "charms.tls_certificates_interface.v2.tls_certificates.TLSCertificatesRequiresV2.request_certificate_creation",  # noqa: E501
     )
-    @patch("ops.model.Container.push", new=Mock)
     @patch("charm.generate_csr")
-    @patch("ops.model.Container.pull")
     def test_given_certificate_does_not_match_stored_one_when_certificate_expiring_then_certificate_is_not_requested(  # noqa: E501
-        self, patch_pull, patch_generate_csr, patch_request_certificate_creation
+        self, patch_generate_csr, patch_request_certificate_creation
     ):
+        self.harness.add_storage("certs", attach=True)
+        certificate = "Stored certificate content"
+        root = self.harness.get_filesystem_root("nrf")
+        (root / "support/TLS/nrf.pem").write_text(certificate)
         event = Mock()
-        patch_pull.return_value = StringIO("Stored certificate content")
         event.certificate = "Relation certificate content (different from stored)"
         csr = b"whatever csr content"
         patch_generate_csr.return_value = csr
@@ -583,16 +571,18 @@ class TestCharm(unittest.TestCase):
     @patch(
         "charms.tls_certificates_interface.v2.tls_certificates.TLSCertificatesRequiresV2.request_certificate_creation",  # noqa: E501
     )
-    @patch("ops.model.Container.push", new=Mock)
     @patch("charm.generate_csr")
-    @patch("ops.model.Container.pull")
     def test_given_certificate_matches_stored_one_when_certificate_expiring_then_certificate_is_requested(  # noqa: E501
-        self, patch_pull, patch_generate_csr, patch_request_certificate_creation
+        self, patch_generate_csr, patch_request_certificate_creation
     ):
+        self.harness.add_storage("certs", attach=True)
+        private_key = "whatever key content"
         certificate = "whatever certificate content"
+        root = self.harness.get_filesystem_root("nrf")
+        (root / "support/TLS/nrf.key").write_text(private_key)
+        (root / "support/TLS/nrf.pem").write_text(certificate)
         event = Mock()
         event.certificate = certificate
-        patch_pull.return_value = StringIO(certificate)
         csr = b"whatever csr content"
         patch_generate_csr.return_value = csr
         self.harness.set_can_connect(container="nrf", val=True)
