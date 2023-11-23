@@ -429,7 +429,9 @@ class TestCharm(unittest.TestCase):
 
         with self.assertRaises(FileNotFoundError):
             (root / "support/TLS/nrf.key").read_text()
+        with self.assertRaises(FileNotFoundError):
             (root / "support/TLS/nrf.pem").read_text()
+        with self.assertRaises(FileNotFoundError):
             (root / "support/TLS/nrf.csr").read_text()
 
     def test_given_certificates_are_stored_when_on_certificates_relation_broken_then_status_is_blocked(  # noqa: E501
