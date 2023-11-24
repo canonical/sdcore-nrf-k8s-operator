@@ -4,8 +4,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from ops import testing
-from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
+from ops import ActiveStatus, BlockedStatus, WaitingStatus, testing
 
 from charm import NRFOperatorCharm  # type: ignore[import]
 
@@ -77,10 +76,10 @@ class TestCharm(unittest.TestCase):
 
     def test_given_database_relation_not_created_when_pebble_ready_then_status_is_blocked(self):
         self.harness.container_pebble_ready(container_name="nrf")
-
+        self.harness.evaluate_status()
         self.assertEqual(
             self.harness.model.unit.status,
-            BlockedStatus("Waiting for database relation to be created"),
+            BlockedStatus("Waiting for database relation"),
         )
 
     def test_given_certificates_relation_not_created_when_pebble_ready_then_status_is_blocked(
@@ -88,10 +87,10 @@ class TestCharm(unittest.TestCase):
     ):
         self.harness.container_pebble_ready(container_name="nrf")
         self._create_database_relation()
-
+        self.harness.evaluate_status()
         self.assertEqual(
             self.harness.model.unit.status,
-            BlockedStatus(f"Waiting for {TLS_RELATION_NAME} relation to be created"),
+            BlockedStatus(f"Waiting for {TLS_RELATION_NAME} relation"),
         )
 
     @patch("charm.check_output")
@@ -110,7 +109,7 @@ class TestCharm(unittest.TestCase):
         self.harness.container_pebble_ready(container_name="nrf")
 
         self.harness.remove_relation(database_relation_id)
-
+        self.harness.evaluate_status()
         self.assertEqual(
             self.harness.model.unit.status,
             BlockedStatus("Waiting for database relation"),
@@ -122,6 +121,7 @@ class TestCharm(unittest.TestCase):
         self._create_database_relation()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.container_pebble_ready(container_name="nrf")
+        self.harness.evaluate_status()
         self.assertEqual(
             self.harness.model.unit.status,
             WaitingStatus("Waiting for the database to be available"),
@@ -136,6 +136,7 @@ class TestCharm(unittest.TestCase):
         self._create_database_relation()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.container_pebble_ready(container_name="nrf")
+        self.harness.evaluate_status()
         self.assertEqual(
             self.harness.model.unit.status,
             WaitingStatus("Waiting for database URI"),
@@ -147,6 +148,7 @@ class TestCharm(unittest.TestCase):
         self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.container_pebble_ready(container_name="nrf")
+        self.harness.evaluate_status()
         self.assertEqual(
             self.harness.model.unit.status,
             WaitingStatus("Waiting for storage to be attached"),
@@ -168,6 +170,7 @@ class TestCharm(unittest.TestCase):
         self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.container_pebble_ready("nrf")
+        self.harness.evaluate_status()
         self.assertEqual(
             self.harness.model.unit.status,
             WaitingStatus("Waiting for certificates to be stored"),
@@ -198,6 +201,7 @@ class TestCharm(unittest.TestCase):
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.charm._on_certificate_available(event=event)
         self.harness.container_pebble_ready(container_name="nrf")
+        self.harness.evaluate_status()
         self.assertEqual(self.harness.model.unit.status, ActiveStatus(""))
         with open("tests/unit/expected_config/config.conf") as expected_config_file:
             expected_content = expected_config_file.read()
@@ -290,7 +294,7 @@ class TestCharm(unittest.TestCase):
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
 
         self.harness.container_pebble_ready("nrf")
-
+        self.harness.evaluate_status()
         self.assertEqual(self.harness.model.unit.status, ActiveStatus())
 
     @patch("charm.check_output")
@@ -314,7 +318,7 @@ class TestCharm(unittest.TestCase):
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
 
         self.harness.container_pebble_ready("nrf")
-
+        self.harness.evaluate_status()
         self.assertEqual(
             self.harness.model.unit.status,
             WaitingStatus("Waiting for pod IP address to be available"),
@@ -449,9 +453,10 @@ class TestCharm(unittest.TestCase):
         self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.charm._on_certificates_relation_broken(event=Mock())
+        self.harness.evaluate_status()
         self.assertEqual(
             self.harness.charm.unit.status,
-            BlockedStatus(f"Waiting for {TLS_RELATION_NAME} relation to be created"),
+            BlockedStatus(f"Waiting for {TLS_RELATION_NAME} relation"),
         )
 
     @patch(

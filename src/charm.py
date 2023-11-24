@@ -23,9 +23,16 @@ from charms.tls_certificates_interface.v2.tls_certificates import (  # type: ign
 )
 from jinja2 import Environment, FileSystemLoader  # type: ignore[import]
 from lightkube.models.core_v1 import ServicePort
-from ops.charm import CharmBase, EventBase, RelationJoinedEvent
+from ops import (
+    ActiveStatus,
+    BlockedStatus,
+    CollectStatusEvent,
+    ModelError,
+    StatusBase,
+    WaitingStatus,
+)
+from ops.charm import CharmBase, EventBase, RelationBrokenEvent, RelationJoinedEvent
 from ops.main import main
-from ops.model import ActiveStatus, BlockedStatus, ModelError, WaitingStatus
 from ops.pebble import Layer
 
 logger = logging.getLogger(__name__)
@@ -49,7 +56,10 @@ def _get_pod_ip() -> Optional[str]:
     Returns:
         str: The pod IP.
     """
-    ip_address = check_output(["unit-get", "private-address"])
+    try:
+        ip_address = check_output(["unit-get", "private-address"])
+    except FileNotFoundError:
+        return None
     return str(IPv4Address(ip_address.decode().strip())) if ip_address else None
 
 
@@ -90,14 +100,6 @@ class NRFOperatorCharm(CharmBase):
     def __init__(self, *args):
         """Initialize charm."""
         super().__init__(*args)
-        if not self.unit.is_leader():
-            # NOTE: In cases where leader status is lost before the charm is
-            # finished processing all teardown events, this prevents teardown
-            # event code from running. Luckily, for this charm, none of the
-            # teardown code is necessary to preform if we're removing the
-            # charm.
-            self.unit.status = BlockedStatus("Scaling is not implemented for this charm")
-            return
         self._container_name = self._service_name = "nrf"
         self._container = self.unit.get_container(self._container_name)
         self._database = DatabaseRequires(
@@ -112,6 +114,11 @@ class NRFOperatorCharm(CharmBase):
                 ServicePort(name="sbi", port=NRF_SBI_PORT),
             ],
         )
+        # Setting attributes to detect broken relations until
+        # https://github.com/canonical/operator/issues/940 is fixed
+        self._database_relation_breaking = False
+        self._tls_relation_breaking = False
+        self.framework.observe(self.on.collect_unit_status, self._on_collect_unit_status)
         self.framework.observe(self.on.database_relation_joined, self._configure_nrf)
         self.framework.observe(self.on.database_relation_broken, self._on_database_relation_broken)
         self.framework.observe(self.on.nrf_pebble_ready, self._configure_nrf)
@@ -135,43 +142,72 @@ class NRFOperatorCharm(CharmBase):
             self._certificates.on.certificate_expiring, self._on_certificate_expiring
         )
 
+    def _is_unit_in_non_active_status(self) -> Optional[StatusBase]:  # noqa: C901
+        """Evaluate and return the unit's current status, or None if it should be active.
+
+        Returns:
+            StatusBase: MaintenanceStatus/BlockedStatus/WaitingStatus
+            None: If none of the conditionals match
+
+        """
+        if not self.unit.is_leader():
+            # NOTE: In cases where leader status is lost before the charm is
+            # finished processing all teardown events, this prevents teardown
+            # event code from running. Luckily, for this charm, none of the
+            # teardown code is necessary to preform if we're removing the
+            # charm.
+            return BlockedStatus("Scaling is not implemented for this charm")
+
+        if not self._container.can_connect():
+            return WaitingStatus("Waiting for container to be ready")
+
+        if not self.model.get_relation(DATABASE_RELATION_NAME) or self._database_relation_breaking:
+            return BlockedStatus("Waiting for database relation")
+
+        if not self.model.get_relation("certificates") or self._tls_relation_breaking:
+            return BlockedStatus("Waiting for certificates relation")
+
+        if not self._database_is_available():
+            return WaitingStatus("Waiting for the database to be available")
+
+        if not self._get_database_uri():
+            return WaitingStatus("Waiting for database URI")
+
+        if not self._container.exists(path=BASE_CONFIG_PATH):
+            return WaitingStatus("Waiting for storage to be attached")
+
+        if not _get_pod_ip():
+            return WaitingStatus("Waiting for pod IP address to be available")
+
+        if not self._certificate_is_stored():
+            return WaitingStatus("Waiting for certificates to be stored")
+
+        return None
+
+    def _on_collect_unit_status(self, event: CollectStatusEvent):
+        """Check the unit status and set to Unit when CollectStatusEvent is fired.
+
+        Args:
+            event: CollectStatusEvent
+        """
+        if status := self._is_unit_in_non_active_status():
+            event.add_status(status)
+        else:
+            event.add_status(ActiveStatus())
+
     def _configure_nrf(self, event: EventBase) -> None:
         """Adds pebble layer and manages Juju unit status.
 
         Args:
             event: Juju event
         """
-        if not self._container.can_connect():
-            self.unit.status = WaitingStatus("Waiting for container to be ready")
-            event.defer()
-            return
-        for relation in [DATABASE_RELATION_NAME, "certificates"]:
-            if not self._relation_created(relation):
-                self.unit.status = BlockedStatus(f"Waiting for {relation} relation to be created")
-                return
-        if not self._database_is_available():
-            self.unit.status = WaitingStatus("Waiting for the database to be available")
-            return
-        if not self._get_database_uri():
-            self.unit.status = WaitingStatus("Waiting for database URI")
-            event.defer()
-            return
-        if not self._container.exists(path=BASE_CONFIG_PATH):
-            self.unit.status = WaitingStatus("Waiting for storage to be attached")
-            event.defer()
-            return
-        if not _get_pod_ip():
-            self.unit.status = WaitingStatus("Waiting for pod IP address to be available")
-            event.defer()
-            return
-        if not self._certificate_is_stored():
-            self.unit.status = WaitingStatus("Waiting for certificates to be stored")
+        if self._is_unit_in_non_active_status():
+            # Unit Status is in Maintanence or Blocked or Waiting status
             event.defer()
             return
         needs_restart = self._generate_config_file()
         self._configure_workload(restart=needs_restart)
         self._publish_nrf_info_for_all_requirers()
-        self.unit.status = ActiveStatus()
 
     def _on_certificates_relation_created(self, event: EventBase) -> None:
         """Generates Private key."""
@@ -180,7 +216,7 @@ class NRFOperatorCharm(CharmBase):
             return
         self._generate_private_key()
 
-    def _on_certificates_relation_broken(self, event: EventBase) -> None:
+    def _on_certificates_relation_broken(self, event: RelationBrokenEvent) -> None:
         """Deletes TLS related artifacts and reconfigures workload."""
         if not self._container.can_connect():
             event.defer()
@@ -188,7 +224,7 @@ class NRFOperatorCharm(CharmBase):
         self._delete_private_key()
         self._delete_csr()
         self._delete_certificate()
-        self.unit.status = BlockedStatus("Waiting for certificates relation to be created")
+        self._tls_relation_breaking = True
 
     def _on_certificates_relation_joined(self, event: EventBase) -> None:
         """Generates CSR and requests new certificate."""
@@ -227,13 +263,13 @@ class NRFOperatorCharm(CharmBase):
             return
         self._request_new_certificate()
 
-    def _on_database_relation_broken(self, event: EventBase) -> None:
+    def _on_database_relation_broken(self, event: RelationBrokenEvent) -> None:
         """Event handler for database relation broken.
 
         Args:
             event: Juju event
         """
-        self.unit.status = BlockedStatus("Waiting for database relation")
+        self._database_relation_breaking = True
 
     def _generate_private_key(self) -> None:
         """Generates and stores private key."""

@@ -83,6 +83,9 @@ async def test_given_charm_is_deployed_when_relate_to_mongo_and_certificates_the
 @pytest.mark.abort_on_fail
 async def test_remove_tls_and_wait_for_blocked_status(ops_test, build_and_deploy):
     await ops_test.model.remove_application(TLS_APPLICATION_NAME, block_until_done=True)  # type: ignore[union-attr]  # noqa: E501
+    # Running config-changed hook with empty config to check whether _tls_relation_breaking
+    # attribute will not be set to its default value
+    await ops_test.model.applications[APP_NAME].set_config({})
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", timeout=60)  # type: ignore[union-attr]  # noqa: E501
 
 
@@ -106,6 +109,9 @@ async def test_restore_tls_and_wait_for_active_status(ops_test: OpsTest, build_a
 async def test_remove_database_and_wait_for_blocked_status(ops_test: OpsTest, build_and_deploy):
     assert ops_test.model
     await ops_test.model.remove_application(DB_APPLICATION_NAME, block_until_done=True)
+    # Running config-changed hook with empty config to check whether _database_relation_breaking
+    # attribute will not be set to its default value
+    await ops_test.model.applications[APP_NAME].set_config({})
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", timeout=60)
 
 
