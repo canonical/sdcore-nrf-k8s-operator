@@ -6,7 +6,7 @@ Charmed Operator for the SD-Core Network Repository Function (NRF).
 # Usage
 
 ```bash
-juju deploy sdcore-nrf --trust --channel=edge
+juju deploy sdcore-nrf --channel=edge
 juju deploy mongodb-k8s --trust --channel=5/edge
 juju deploy self-signed-certificates --channel=beta
 
