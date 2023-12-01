@@ -10,9 +10,6 @@ from subprocess import check_output
 from typing import Optional
 
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires  # type: ignore[import]
-from charms.observability_libs.v1.kubernetes_service_patch import (  # type: ignore[import]
-    KubernetesServicePatch,
-)
 from charms.sdcore_nrf.v0.fiveg_nrf import NRFProvides  # type: ignore[import]
 from charms.tls_certificates_interface.v2.tls_certificates import (  # type: ignore[import]
     CertificateAvailableEvent,
@@ -22,7 +19,6 @@ from charms.tls_certificates_interface.v2.tls_certificates import (  # type: ign
     generate_private_key,
 )
 from jinja2 import Environment, FileSystemLoader  # type: ignore[import]
-from lightkube.models.core_v1 import ServicePort
 from ops.charm import CharmBase, EventBase, RelationJoinedEvent
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, ModelError, WaitingStatus
@@ -106,12 +102,7 @@ class NRFOperatorCharm(CharmBase):
         self.nrf_provider = NRFProvides(self, NRF_RELATION_NAME)
         self._certificates = TLSCertificatesRequiresV2(self, "certificates")
 
-        self._service_patcher = KubernetesServicePatch(
-            charm=self,
-            ports=[
-                ServicePort(name="sbi", port=NRF_SBI_PORT),
-            ],
-        )
+        self.unit.set_ports(NRF_SBI_PORT)
         self.framework.observe(self.on.database_relation_joined, self._configure_nrf)
         self.framework.observe(self.on.database_relation_broken, self._on_database_relation_broken)
         self.framework.observe(self.on.nrf_pebble_ready, self._configure_nrf)

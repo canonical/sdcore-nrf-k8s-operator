@@ -17,10 +17,6 @@ TLS_RELATION_NAME = "certificates"
 
 
 class TestCharm(unittest.TestCase):
-    @patch(
-        "charm.KubernetesServicePatch",
-        lambda charm, ports: None,
-    )
     def setUp(self):
         self.harness = testing.Harness(NRFOperatorCharm)
         self.addCleanup(self.harness.cleanup)
