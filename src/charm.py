@@ -2,7 +2,7 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-"""Charmed operator for the SD-Core NRF service."""
+"""Charmed K8s operator for the SD-Core NRF service."""
 
 import logging
 from ipaddress import IPv4Address
@@ -80,8 +80,8 @@ def _render_config(
     return content
 
 
-class NRFOperatorCharm(CharmBase):
-    """Main class to describe juju event handling for the SD-Core NRF operator."""
+class NRFK8sOperatorCharm(CharmBase):
+    """Main class to describe juju event handling for the SD-Core NRF K8s operator."""
 
     def __init__(self, *args):
         """Initialize charm."""
@@ -483,4 +483,4 @@ class NRFOperatorCharm(CharmBase):
 
 
 if __name__ == "__main__":
-    main(NRFOperatorCharm)
+    main(NRFK8sOperatorCharm)

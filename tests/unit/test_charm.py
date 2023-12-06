@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 from ops import testing
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 
-from charm import NRFOperatorCharm  # type: ignore[import]
+from charm import NRFK8sOperatorCharm  # type: ignore[import]
 
 DB_APPLICATION_NAME = "mongodb-k8s"
 BASE_CONFIG_PATH = "/etc/nrf"
@@ -18,7 +18,7 @@ TLS_RELATION_NAME = "certificates"
 
 class TestCharm(unittest.TestCase):
     def setUp(self):
-        self.harness = testing.Harness(NRFOperatorCharm)
+        self.harness = testing.Harness(NRFK8sOperatorCharm)
         self.addCleanup(self.harness.cleanup)
         self.harness.set_leader(is_leader=True)
         self.harness.begin()
