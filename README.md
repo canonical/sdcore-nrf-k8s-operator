@@ -1,4 +1,4 @@
-# SD-Core NRF Operator for K8s
+# SD-Core NRF Operator (k8s)
 [![CharmHub Badge](https://charmhub.io/sdcore-nrf-k8s/badge.svg)](https://charmhub.io/sdcore-nrf-k8s)
 
 Charmed Operator for the SD-Core Network Repository Function (NRF) for K8s.
