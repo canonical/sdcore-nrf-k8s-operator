@@ -53,7 +53,7 @@ jobs:
         with:
           filters: |
             fiveg_nrf:
-              - 'lib/charms/sdcore_nrf/v0/fiveg_nrf.py'
+              - 'lib/charms/sdcore_nrf_k8s/v0/fiveg_nrf.py'
 
   publish-lib:
     name: Publish Lib
@@ -63,5 +63,5 @@ jobs:
     if: ${{ github.ref_name == 'main' }} && ${{ needs.changes.outputs.needs-publishing == 'true' }}
     uses: canonical/sdcore-github-workflows/.github/workflows/publish-lib.yaml@main
     with:
-      lib-name: "charms.sdcore_nrf.v0.fiveg_nrf"
+      lib-name: "charms.sdcore_nrf_k8s.v0.fiveg_nrf"
     secrets: inherit
