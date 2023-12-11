@@ -10,7 +10,7 @@ import logging
 from ops.charm import CharmBase
 from ops.main import main
 
-from lib.charms.sdcore_nrf.v0.fiveg_nrf import NRFAvailableEvent, NRFBrokenEvent, NRFRequires
+from lib.charms.sdcore_nrf_k8s.v0.fiveg_nrf import NRFAvailableEvent, NRFBrokenEvent, NRFRequires
 
 logger = logging.getLogger(__name__)
 
