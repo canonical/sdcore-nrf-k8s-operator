@@ -1,30 +1,20 @@
-<div align="center">
-  <img src="./icon.svg" alt="ONF Icon" width="200" height="200">
-</div>
-<br/>
-<div align="center">
-  <a href="https://charmhub.io/sdcore-nrf"><img src="https://charmhub.io/sdcore-nrf/badge.svg" alt="CharmHub Badge"></a>
-  <a href="https://github.com/canonical/sdcore-nrf-operator/actions/workflows/publish-charm.yaml">
-    <img src="https://github.com/canonical/sdcore-nrf-operator/actions/workflows/publish-charm.yaml/badge.svg?branch=main" alt=".github/workflows/publish-charm.yaml">
-  </a>
-  <br/>
-  <br/>
-  <h1>SD-Core NRF Operator</h1>
-</div>
+# SD-Core NRF Operator (k8s)
+[![CharmHub Badge](https://charmhub.io/sdcore-nrf-k8s/badge.svg)](https://charmhub.io/sdcore-nrf-k8s)
 
-Charmed Operator for the SD-Core Network Repository Function (NRF).
+Charmed Operator for the SD-Core Network Repository Function (NRF) for K8s.
 
 # Usage
 
 ```bash
-juju deploy sdcore-nrf --trust --channel=edge
+juju deploy sdcore-nrf-k8s --channel=edge
 juju deploy mongodb-k8s --trust --channel=6/beta
 juju deploy self-signed-certificates --channel=beta
 
-juju integrate sdcore-nrf:database mongodb-k8s
-juju integrate self-signed-certificates:certificates sdcore-nrf:certificates
+juju integrate sdcore-nrf-k8s:database mongodb-k8s
+juju integrate self-signed-certificates:certificates sdcore-nrf-k8s:certificates
 ```
 
 # Image
 
 - **nrf**: `ghcr.io/canonical/sdcore-nrf:1.3`
+
