@@ -11,10 +11,10 @@ from typing import Optional
 
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires  # type: ignore[import]
 from charms.sdcore_nrf_k8s.v0.fiveg_nrf import NRFProvides  # type: ignore[import]
-from charms.tls_certificates_interface.v2.tls_certificates import (  # type: ignore[import]
+from charms.tls_certificates_interface.v3.tls_certificates import (  # type: ignore[import]
     CertificateAvailableEvent,
     CertificateExpiringEvent,
-    TLSCertificatesRequiresV2,
+    TLSCertificatesRequiresV3,
     generate_csr,
     generate_private_key,
 )
@@ -100,7 +100,7 @@ class NRFOperatorCharm(CharmBase):
             self, relation_name=DATABASE_RELATION_NAME, database_name=DATABASE_NAME
         )
         self.nrf_provider = NRFProvides(self, NRF_RELATION_NAME)
-        self._certificates = TLSCertificatesRequiresV2(self, "certificates")
+        self._certificates = TLSCertificatesRequiresV3(self, "certificates")
 
         self.unit.set_ports(NRF_SBI_PORT)
         self.framework.observe(self.on.database_relation_joined, self._configure_nrf)
