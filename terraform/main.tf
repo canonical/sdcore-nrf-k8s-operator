@@ -1,5 +1,8 @@
-resource "juju_application" "nrf" {
-  name  = "nrf"
+# Copyright 2024 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+resource "juju_application" "sdcore-nrf-k8s" {
+  name  = var.app_name
   model = var.model_name
 
   charm {
@@ -10,31 +13,4 @@ resource "juju_application" "nrf" {
   trust = true
 }
 
-resource "juju_integration" "nrf-db" {
-  model = var.model_name
-
-  application {
-    name     = juju_application.nrf.name
-    endpoint = "database"
-  }
-
-  application {
-    name     = var.db_application_name
-    endpoint = "database"
-  }
-}
-
-resource "juju_integration" "nrf-certs" {
-  model = var.model_name
-
-  application {
-    name     = juju_application.nrf.name
-    endpoint = "certificates"
-  }
-
-  application {
-    name     = var.certs_application_name
-    endpoint = "certificates"
-  }
-}
 
