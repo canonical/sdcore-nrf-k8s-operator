@@ -21,7 +21,7 @@ class DummyFiveGNRFRequirerCharm(CharmBase):
     def __init__(self, *args):
         """Init."""
         super().__init__(*args)
-        self.nrf_requirer = NRFRequires(self, "fiveg-nrf")
+        self.nrf_requirer = NRFRequires(self, "fiveg_nrf")
         self.framework.observe(self.nrf_requirer.on.nrf_available, self._on_nrf_available)
         self.framework.observe(self.nrf_requirer.on.nrf_broken, self._on_nrf_broken)
 

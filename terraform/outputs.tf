@@ -18,5 +18,5 @@ output "certificates_endpoint" {
 
 output "fiveg_nrf_endpoint" {
   description = "Name of the endpoint to provide fiveg_nrf interface."
-  value       = "fiveg-nrf"
+  value       = "fiveg_nrf"
 }
