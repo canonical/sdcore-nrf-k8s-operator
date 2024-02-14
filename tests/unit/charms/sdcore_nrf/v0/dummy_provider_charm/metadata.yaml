@@ -9,5 +9,5 @@ summary: |
   Dummy SD-Core NRF provider charm.
 
 provides:
-  fiveg-nrf:
-    interface: fiveg-nrf
+  fiveg_nrf:
+    interface: fiveg_nrf

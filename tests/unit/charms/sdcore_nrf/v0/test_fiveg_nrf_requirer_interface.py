@@ -15,7 +15,7 @@ DUMMY_REQUIRER_CHARM = "tests.unit.charms.sdcore_nrf.v0.dummy_requirer_charm.src
 
 class TestFiveGNRFRequirer(unittest.TestCase):
     def setUp(self):
-        self.relation_name = "fiveg-nrf"
+        self.relation_name = "fiveg_nrf"
         self.remote_app_name = "dummy-nrf-provider"
         self.remote_unit_name = f"{self.remote_app_name}/0"
         self.harness = testing.Harness(DummyFiveGNRFRequirerCharm)

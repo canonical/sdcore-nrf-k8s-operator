@@ -19,7 +19,7 @@ class DummyFiveGNRFProviderCharm(CharmBase):
     def __init__(self, *args):
         """Init."""
         super().__init__(*args)
-        self.nrf_provider = NRFProvides(self, "fiveg-nrf")
+        self.nrf_provider = NRFProvides(self, "fiveg_nrf")
         self.framework.observe(
             self.on.fiveg_nrf_relation_joined, self._on_fiveg_nrf_relation_joined
         )

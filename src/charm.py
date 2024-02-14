@@ -31,7 +31,7 @@ CONFIG_FILE_NAME = "nrfcfg.yaml"
 DATABASE_NAME = "free5gc"
 NRF_SBI_PORT = 29510
 DATABASE_RELATION_NAME = "database"
-NRF_RELATION_NAME = "fiveg-nrf"
+NRF_RELATION_NAME = "fiveg_nrf"
 CERTS_DIR_PATH = "/support/TLS"  # Certificate paths are hardcoded in NRF code
 PRIVATE_KEY_NAME = "nrf.key"
 CSR_NAME = "nrf.csr"
@@ -354,7 +354,7 @@ class NRFOperatorCharm(CharmBase):
         return True
 
     def _on_fiveg_nrf_relation_joined(self, event: RelationJoinedEvent) -> None:
-        """Handle fiveg-nrf relation joined event.
+        """Handle fiveg_nrf relation joined event.
 
         Args:
             event: RelationJoinedEvent
