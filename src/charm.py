@@ -12,14 +12,14 @@ from typing import Optional
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires  # type: ignore[import]
 from charms.sdcore_nrf_k8s.v0.fiveg_nrf import NRFProvides  # type: ignore[import]
 from charms.tls_certificates_interface.v3.tls_certificates import (  # type: ignore[import]
-    CertificateAvailableEvent,
     CertificateExpiringEvent,
     TLSCertificatesRequiresV3,
     generate_csr,
     generate_private_key,
 )
 from jinja2 import Environment, FileSystemLoader  # type: ignore[import]
-from ops.charm import CharmBase, EventBase, RelationJoinedEvent
+from ops.charm import CharmBase, RelationJoinedEvent
+from ops.framework import EventBase
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, ModelError, WaitingStatus
 from ops.pebble import Layer
@@ -119,7 +119,7 @@ class NRFOperatorCharm(CharmBase):
             self._certificates.on.certificate_expiring, self._on_certificate_expiring
         )
 
-    def _configure_nrf(self, event: EventBase) -> None:
+    def _configure_nrf(self, event: EventBase) -> None:  # noqa C901
         """Adds pebble layer and manages Juju unit status.
 
         Args:

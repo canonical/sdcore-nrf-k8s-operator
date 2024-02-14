@@ -4,11 +4,11 @@
 import unittest
 from unittest.mock import Mock, patch
 
+from charms.tls_certificates_interface.v3.tls_certificates import ProviderCertificate
 from ops import testing
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 
 from charm import NRFOperatorCharm
-from charms.tls_certificates_interface.v3.tls_certificates import ProviderCertificate  # type: ignore[import]
 
 DB_APPLICATION_NAME = "mongodb-k8s"
 BASE_CONFIG_PATH = "/etc/nrf"
