@@ -400,7 +400,7 @@ class TestCharm(unittest.TestCase):
         self.harness.set_can_connect(container="nrf", val=True)
         self.harness.container_pebble_ready("nrf")
         relation_id = self.harness.add_relation(
-            relation_name="fiveg-nrf",
+            relation_name="fiveg_nrf",
             remote_app="nrf-requirer",
         )
         self.harness.add_relation_unit(relation_id=relation_id, remote_unit_name="nrf-requirer/0")
@@ -445,12 +445,12 @@ class TestCharm(unittest.TestCase):
         self.harness.set_can_connect(container="nrf", val=False)
 
         relation_1_id = self.harness.add_relation(
-            relation_name="fiveg-nrf",
+            relation_name="fiveg_nrf",
             remote_app="nrf-requirer-1",
         )
 
         relation_2_id = self.harness.add_relation(
-            relation_name="fiveg-nrf",
+            relation_name="fiveg_nrf",
             remote_app="nrf-requirer-2",
         )
         self.harness.add_relation_unit(

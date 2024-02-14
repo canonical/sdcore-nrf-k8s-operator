@@ -16,7 +16,7 @@ DUMMY_PROVIDER_CHARM = "tests.unit.charms.sdcore_nrf.v0.dummy_provider_charm.src
 
 class TestFiveGNRFProvider(unittest.TestCase):
     def setUp(self):
-        self.relation_name = "fiveg-nrf"
+        self.relation_name = "fiveg_nrf"
         self.remote_app_name = "dummy-nrf-requirer"
         self.remote_unit_name = f"{self.remote_app_name}/0"
         self.harness = testing.Harness(DummyFiveGNRFProviderCharm)
@@ -78,7 +78,7 @@ class TestFiveGNRFProvider(unittest.TestCase):
             self.harness.charm.nrf_provider.set_nrf_information(
                 url="https://nrf.example.com", relation_id=relation_id_for_unexsistant_relation
             )
-        self.assertEqual(str(e.value), "Relation fiveg-nrf not created yet.")
+        self.assertEqual(str(e.value), "Relation fiveg_nrf not created yet.")
 
     def test_given_unit_is_leader_when_multiple_fiveg_nrf_relation_joined_then_data_in_application_databag(  # noqa: E501
         self,

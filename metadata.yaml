@@ -36,7 +36,7 @@ requires:
     interface: tls-certificates
 
 provides:
-  fiveg-nrf:
+  fiveg_nrf:
     interface: fiveg_nrf
 
 assumes:

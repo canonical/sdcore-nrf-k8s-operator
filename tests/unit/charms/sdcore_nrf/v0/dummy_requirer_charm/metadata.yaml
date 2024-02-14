@@ -9,5 +9,5 @@ summary: |
   Dummy SD-Core NRF requirer charm.
 
 requires:
-  fiveg-nrf:
-    interface: fiveg-nrf
+  fiveg_nrf:
+    interface: fiveg_nrf
