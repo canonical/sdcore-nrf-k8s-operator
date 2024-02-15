@@ -119,7 +119,7 @@ class NRFOperatorCharm(CharmBase):
             self._certificates.on.certificate_expiring, self._on_certificate_expiring
         )
 
-    def _configure_nrf(self, event: EventBase) -> None:  # noqa C901
+    def _configure_nrf(self, event: EventBase) -> None:
         """Adds pebble layer and manages Juju unit status.
 
         Args:
@@ -148,16 +148,11 @@ class NRFOperatorCharm(CharmBase):
             self._generate_private_key()
         if not self._csr_is_stored():
             self._request_new_certificate()
-        certificate_changed = False
         provider_certificate = self._get_current_provider_certificate()
-        if provider_certificate:
-            certificate_changed = self._update_certificate(
-                provider_certificate=provider_certificate
-            )
-        else:
+        if not provider_certificate:
             self.unit.status = WaitingStatus("Waiting for certificates to be stored")
             return
-
+        certificate_changed = self._update_certificate(provider_certificate=provider_certificate)
         config_file_changed = self._generate_config_file()
         self._configure_workload(restart=(config_file_changed or certificate_changed))
         self._publish_nrf_info_for_all_requirers()
