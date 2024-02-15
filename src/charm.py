@@ -211,7 +211,7 @@ class NRFOperatorCharm(CharmBase):
             self._get_stored_certificate() if self._certificate_is_stored() else ""
         )
 
-        if not existing_certificate == provider_certificate:
+        if existing_certificate != provider_certificate:
             self._store_certificate(certificate=provider_certificate)
             return True
         return False
