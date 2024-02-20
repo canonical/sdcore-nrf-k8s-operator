@@ -119,30 +119,38 @@ class NRFOperatorCharm(CharmBase):
             self._certificates.on.certificate_expiring, self._on_certificate_expiring
         )
 
+    def ready_to_configure(self) -> bool:
+        """Returns whether all preconditions are met to proceed with configuration."""
+        if not self._container.can_connect():
+            self.unit.status = WaitingStatus("Waiting for container to be ready")
+            return False
+        for relation in [DATABASE_RELATION_NAME, "certificates"]:
+            if not self._relation_created(relation):
+                self.unit.status = BlockedStatus(f"Waiting for {relation} relation to be created")
+                return False
+        if not self._database_is_available():
+            self.unit.status = WaitingStatus("Waiting for the database to be available")
+            return False
+        if not self._get_database_uri():
+            self.unit.status = WaitingStatus("Waiting for database URI")
+            return False
+        if not self._container.exists(path=BASE_CONFIG_PATH) or not self._container.exists(
+            path=CERTS_DIR_PATH
+        ):
+            self.unit.status = WaitingStatus("Waiting for storage to be attached")
+            return False
+        if not _get_pod_ip():
+            self.unit.status = WaitingStatus("Waiting for pod IP address to be available")
+            return False
+        return True
+
     def _configure_nrf(self, event: EventBase) -> None:
         """Adds pebble layer and manages Juju unit status.
 
         Args:
             event: Juju event
         """
-        if not self._container.can_connect():
-            self.unit.status = WaitingStatus("Waiting for container to be ready")
-            return
-        for relation in [DATABASE_RELATION_NAME, "certificates"]:
-            if not self._relation_created(relation):
-                self.unit.status = BlockedStatus(f"Waiting for {relation} relation to be created")
-                return
-        if not self._database_is_available():
-            self.unit.status = WaitingStatus("Waiting for the database to be available")
-            return
-        if not self._get_database_uri():
-            self.unit.status = WaitingStatus("Waiting for database URI")
-            return
-        if not self._container.exists(path=BASE_CONFIG_PATH):
-            self.unit.status = WaitingStatus("Waiting for storage to be attached")
-            return
-        if not _get_pod_ip():
-            self.unit.status = WaitingStatus("Waiting for pod IP address to be available")
+        if not self.ready_to_configure():
             return
         if not self._private_key_is_stored():
             self._generate_private_key()
