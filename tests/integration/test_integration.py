@@ -19,6 +19,7 @@ APP_NAME = METADATA["name"]
 DB_APPLICATION_NAME = "mongodb"
 DB_CHARM_NAME = "mongodb-k8s"
 TLS_APPLICATION_NAME = "self-signed-certificates"
+GRAFANA_AGENT_APPLICATION_NAME = "grafana-agent-k8s"
 
 
 @pytest.fixture(scope="module")
@@ -26,6 +27,16 @@ TLS_APPLICATION_NAME = "self-signed-certificates"
 async def deploy_mongodb(ops_test):
     await ops_test.model.deploy(
         DB_CHARM_NAME, application_name=DB_APPLICATION_NAME, channel="6/beta", trust=True
+    )
+
+
+@pytest.fixture(scope="module")
+@pytest.mark.abort_on_fail
+async def deploy_grafana_agent(ops_test):
+    await ops_test.model.deploy(
+        GRAFANA_AGENT_APPLICATION_NAME,
+        application_name=GRAFANA_AGENT_APPLICATION_NAME,
+        channel="stable",
     )
 
 
@@ -58,7 +69,11 @@ async def build_and_deploy(ops_test):
 
 @pytest.mark.abort_on_fail
 async def test_given_charm_is_built_when_deployed_then_status_is_blocked(
-    ops_test, build_and_deploy, deploy_mongodb, deploy_self_signed_certificates
+    ops_test,
+    build_and_deploy,
+    deploy_mongodb,
+    deploy_self_signed_certificates,
+    deploy_grafana_agent,
 ):
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME],
@@ -76,6 +91,10 @@ async def test_given_charm_is_deployed_when_relate_to_mongo_and_certificates_the
     )
     await ops_test.model.integrate(
         relation1=f"{APP_NAME}:certificates", relation2=f"{TLS_APPLICATION_NAME}:certificates"
+    )
+    await ops_test.model.integrate(
+        relation1=f"{APP_NAME}:logging",
+        relation2=f"{GRAFANA_AGENT_APPLICATION_NAME}",
     )
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)
 

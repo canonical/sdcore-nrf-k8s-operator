@@ -10,6 +10,7 @@ from subprocess import check_output
 from typing import Optional
 
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires  # type: ignore[import]
+from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.sdcore_nrf_k8s.v0.fiveg_nrf import NRFProvides  # type: ignore[import]
 from charms.tls_certificates_interface.v3.tls_certificates import (  # type: ignore[import]
     CertificateExpiringEvent,
@@ -37,6 +38,7 @@ PRIVATE_KEY_NAME = "nrf.key"
 CSR_NAME = "nrf.csr"
 CERTIFICATE_NAME = "nrf.pem"
 CERTIFICATE_COMMON_NAME = "nrf.sdcore"
+LOGGING_RELATION_NAME = "logging"
 
 
 def _get_pod_ip() -> Optional[str]:
@@ -101,7 +103,7 @@ class NRFOperatorCharm(CharmBase):
         )
         self.nrf_provider = NRFProvides(self, NRF_RELATION_NAME)
         self._certificates = TLSCertificatesRequiresV3(self, "certificates")
-
+        self._logging = LogForwarder(charm=self, relation_name=LOGGING_RELATION_NAME)
         self.unit.set_ports(NRF_SBI_PORT)
         self.framework.observe(self.on.database_relation_joined, self._configure_nrf)
         self.framework.observe(self.on.database_relation_broken, self._on_database_relation_broken)

@@ -34,6 +34,8 @@ requires:
     interface: mongodb_client
   certificates:
     interface: tls-certificates
+  logging:
+    interface: loki_push_api
 
 provides:
   fiveg_nrf:
@@ -41,3 +43,4 @@ provides:
 
 assumes:
   - k8s-api
+  - juju >= 3.4
