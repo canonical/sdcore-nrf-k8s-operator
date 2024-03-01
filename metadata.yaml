@@ -43,3 +43,4 @@ provides:
 
 assumes:
   - k8s-api
+  - juju >= 3.4
