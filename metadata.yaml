@@ -34,6 +34,8 @@ requires:
     interface: mongodb_client
   certificates:
     interface: tls-certificates
+  logging:
+    interface: loki_push_api
 
 provides:
   fiveg_nrf:
