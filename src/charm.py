@@ -96,11 +96,6 @@ class NRFOperatorCharm(CharmBase):
         """Initialize charm."""
         super().__init__(*args)
         if not self.unit.is_leader():
-            # NOTE: In cases where leader status is lost before the charm is
-            # finished processing all teardown events, this prevents teardown
-            # event code from running. Luckily, for this charm, none of the
-            # teardown code is necessary to preform if we're removing the
-            # charm.
             return
         self._container_name = self._service_name = "nrf"
         self._container = self.unit.get_container(self._container_name)
@@ -147,7 +142,7 @@ class NRFOperatorCharm(CharmBase):
             return False
         return True
 
-    def _on_collect_unit_status(self, event: CollectStatusEvent):
+    def _on_collect_unit_status(self, event: CollectStatusEvent):  # noqa C901
         """Check the unit status and set to Unit when CollectStatusEvent is fired.
 
         Args:
@@ -184,6 +179,9 @@ class NRFOperatorCharm(CharmBase):
             return
         if self._csr_is_stored() and not self._get_current_provider_certificate():
             event.add_status(WaitingStatus("Waiting for certificates to be stored"))
+            return
+        if not self._nrf_service_is_running():
+            event.add_status(WaitingStatus("Waiting for NRF service to start"))
             return
         event.add_status(ActiveStatus())
 
