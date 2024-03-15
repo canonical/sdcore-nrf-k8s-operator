@@ -192,6 +192,7 @@ class NRFOperatorCharm(CharmBase):
             event: Juju event
         """
         if not self.ready_to_configure():
+            logger.info("The preconditions for the configuration are not met yet.")
             return
         if not self._private_key_is_stored():
             self._generate_private_key()
