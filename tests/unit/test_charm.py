@@ -74,6 +74,7 @@ class TestCharm(unittest.TestCase):
 
     def test_given_database_relation_not_created_when_pebble_ready_then_status_is_blocked(self):
         self.harness.container_pebble_ready(container_name="nrf")
+        self.harness.evaluate_status()
 
         self.assertEqual(
             self.harness.model.unit.status,
@@ -85,6 +86,7 @@ class TestCharm(unittest.TestCase):
     ):
         self.harness.container_pebble_ready(container_name="nrf")
         self._create_database_relation()
+        self.harness.evaluate_status()
 
         self.assertEqual(
             self.harness.model.unit.status,
@@ -119,6 +121,7 @@ class TestCharm(unittest.TestCase):
         self._create_database_relation()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.container_pebble_ready(container_name="nrf")
+        self.harness.evaluate_status()
         self.assertEqual(
             self.harness.model.unit.status,
             WaitingStatus("Waiting for the database to be available"),
@@ -133,6 +136,7 @@ class TestCharm(unittest.TestCase):
         self._create_database_relation()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.container_pebble_ready(container_name="nrf")
+        self.harness.evaluate_status()
         self.assertEqual(
             self.harness.model.unit.status,
             WaitingStatus("Waiting for database URI"),
@@ -144,6 +148,7 @@ class TestCharm(unittest.TestCase):
         self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.container_pebble_ready(container_name="nrf")
+        self.harness.evaluate_status()
         self.assertEqual(
             self.harness.model.unit.status,
             WaitingStatus("Waiting for storage to be attached"),
@@ -166,6 +171,7 @@ class TestCharm(unittest.TestCase):
         self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.container_pebble_ready("nrf")
+        self.harness.evaluate_status()
         self.assertEqual(
             self.harness.model.unit.status,
             WaitingStatus("Waiting for certificates to be stored"),
@@ -205,6 +211,7 @@ class TestCharm(unittest.TestCase):
         self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.container_pebble_ready(container_name="nrf")
+        self.harness.evaluate_status()
         self.assertEqual(self.harness.model.unit.status, ActiveStatus(""))
         with open("tests/unit/expected_config/config.conf") as expected_config_file:
             expected_content = expected_config_file.read()
@@ -333,6 +340,7 @@ class TestCharm(unittest.TestCase):
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
 
         self.harness.container_pebble_ready("nrf")
+        self.harness.evaluate_status()
 
         self.assertEqual(self.harness.model.unit.status, ActiveStatus())
 
@@ -357,6 +365,7 @@ class TestCharm(unittest.TestCase):
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
 
         self.harness.container_pebble_ready("nrf")
+        self.harness.evaluate_status()
 
         self.assertEqual(
             self.harness.model.unit.status,
@@ -523,6 +532,7 @@ class TestCharm(unittest.TestCase):
         self,
     ):
         self.harness.add_storage("certs", attach=True)
+        self.harness.add_storage("config", attach=True)
         private_key = "whatever key content"
         csr = "Whatever CSR content"
         certificate = "Whatever certificate content"
@@ -532,8 +542,11 @@ class TestCharm(unittest.TestCase):
         (root / "support/TLS/nrf.pem").write_text(certificate)
         self.harness.set_can_connect(container="nrf", val=True)
         self._create_database_relation_and_populate_data()
-        self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
-        self.harness.charm._on_certificates_relation_broken(event=Mock())
+        cert_rel_id = self.harness.add_relation(
+            relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME
+        )
+        self.harness.remove_relation(cert_rel_id)
+        self.harness.evaluate_status()
         self.assertEqual(
             self.harness.charm.unit.status,
             BlockedStatus(f"Waiting for {TLS_RELATION_NAME} relation to be created"),

@@ -19,10 +19,17 @@ from charms.tls_certificates_interface.v3.tls_certificates import (  # type: ign
     generate_private_key,
 )
 from jinja2 import Environment, FileSystemLoader  # type: ignore[import]
+from ops import (
+    ActiveStatus,
+    BlockedStatus,
+    CollectStatusEvent,
+    ModelError,
+    RelationBrokenEvent,
+    WaitingStatus,
+)
 from ops.charm import CharmBase, RelationJoinedEvent
 from ops.framework import EventBase
 from ops.main import main
-from ops.model import ActiveStatus, BlockedStatus, ModelError, WaitingStatus
 from ops.pebble import Layer
 
 logger = logging.getLogger(__name__)
@@ -94,7 +101,6 @@ class NRFOperatorCharm(CharmBase):
             # event code from running. Luckily, for this charm, none of the
             # teardown code is necessary to preform if we're removing the
             # charm.
-            self.unit.status = BlockedStatus("Scaling is not implemented for this charm")
             return
         self._container_name = self._service_name = "nrf"
         self._container = self.unit.get_container(self._container_name)
@@ -105,6 +111,7 @@ class NRFOperatorCharm(CharmBase):
         self._certificates = TLSCertificatesRequiresV3(self, "certificates")
         self._logging = LogForwarder(charm=self, relation_name=LOGGING_RELATION_NAME)
         self.unit.set_ports(NRF_SBI_PORT)
+        self.framework.observe(self.on.collect_unit_status, self._on_collect_unit_status)
         self.framework.observe(self.on.database_relation_joined, self._configure_nrf)
         self.framework.observe(self.on.database_relation_broken, self._on_database_relation_broken)
         self.framework.observe(self.on.nrf_pebble_ready, self._configure_nrf)
@@ -124,27 +131,61 @@ class NRFOperatorCharm(CharmBase):
     def ready_to_configure(self) -> bool:
         """Returns whether all preconditions are met to proceed with configuration."""
         if not self._container.can_connect():
-            self.unit.status = WaitingStatus("Waiting for container to be ready")
             return False
         for relation in [DATABASE_RELATION_NAME, "certificates"]:
             if not self._relation_created(relation):
-                self.unit.status = BlockedStatus(f"Waiting for {relation} relation to be created")
                 return False
         if not self._database_is_available():
-            self.unit.status = WaitingStatus("Waiting for the database to be available")
             return False
         if not self._get_database_uri():
-            self.unit.status = WaitingStatus("Waiting for database URI")
             return False
         if not self._container.exists(path=BASE_CONFIG_PATH) or not self._container.exists(
             path=CERTS_DIR_PATH
         ):
-            self.unit.status = WaitingStatus("Waiting for storage to be attached")
             return False
         if not _get_pod_ip():
-            self.unit.status = WaitingStatus("Waiting for pod IP address to be available")
             return False
         return True
+
+    def _on_collect_unit_status(self, event: CollectStatusEvent):
+        """Check the unit status and set to Unit when CollectStatusEvent is fired.
+
+        Args:
+            event: CollectStatusEvent
+        """
+        if not self.unit.is_leader():
+            # NOTE: In cases where leader status is lost before the charm is
+            # finished processing all teardown events, this prevents teardown
+            # event code from running. Luckily, for this charm, none of the
+            # teardown code is necessary to perform if we're removing the
+            # charm.
+            event.add_status(BlockedStatus("Scaling is not implemented for this charm"))
+            return
+        if not self._container.can_connect():
+            event.add_status(WaitingStatus("Waiting for container to be ready"))
+            return
+        for relation in [DATABASE_RELATION_NAME, "certificates"]:
+            if not self._relation_created(relation):
+                event.add_status(BlockedStatus(f"Waiting for {relation} relation to be created"))
+                return
+        if not self._database_is_available():
+            event.add_status(WaitingStatus("Waiting for the database to be available"))
+            return
+        if not self._get_database_uri():
+            event.add_status(WaitingStatus("Waiting for database URI"))
+            return
+        if not self._container.exists(path=BASE_CONFIG_PATH) or not self._container.exists(
+            path=CERTS_DIR_PATH
+        ):
+            event.add_status(WaitingStatus("Waiting for storage to be attached"))
+            return
+        if not _get_pod_ip():
+            event.add_status(WaitingStatus("Waiting for pod IP address to be available"))
+            return
+        if self._csr_is_stored() and not self._get_current_provider_certificate():
+            event.add_status(WaitingStatus("Waiting for certificates to be stored"))
+            return
+        event.add_status(ActiveStatus())
 
     def _configure_nrf(self, event: EventBase) -> None:
         """Adds pebble layer and manages Juju unit status.
@@ -160,15 +201,18 @@ class NRFOperatorCharm(CharmBase):
             self._request_new_certificate()
         provider_certificate = self._get_current_provider_certificate()
         if not provider_certificate:
-            self.unit.status = WaitingStatus("Waiting for certificates to be stored")
             return
-        certificate_changed = self._update_certificate(provider_certificate=provider_certificate)
-        config_file_changed = self._generate_config_file()
-        self._configure_workload(restart=(config_file_changed or certificate_changed))
+        if certificate_update_required := self._is_certificate_update_required(
+            provider_certificate
+        ):
+            self._store_certificate(certificate=provider_certificate)
+        desired_config_file = self._generate_nrf_config_file()
+        if config_update_required := self._is_config_update_required(desired_config_file):
+            self._push_config_file(content=desired_config_file)
+        self._configure_workload(restart=(config_update_required or certificate_update_required))
         self._publish_nrf_info_for_all_requirers()
-        self.unit.status = ActiveStatus()
 
-    def _on_certificates_relation_broken(self, event: EventBase) -> None:
+    def _on_certificates_relation_broken(self, event: RelationBrokenEvent) -> None:
         """Deletes TLS related artifacts and reconfigures workload."""
         if not self._container.can_connect():
             event.defer()
@@ -176,7 +220,6 @@ class NRFOperatorCharm(CharmBase):
         self._delete_private_key()
         self._delete_csr()
         self._delete_certificate()
-        self.unit.status = BlockedStatus("Waiting for certificates relation to be created")
 
     def _on_certificate_expiring(self, event: CertificateExpiringEvent) -> None:
         """Requests new certificate."""
@@ -207,19 +250,21 @@ class NRFOperatorCharm(CharmBase):
                 return provider_certificate.certificate
         return None
 
-    def _update_certificate(self, provider_certificate) -> bool:
-        """Compares the provided certificate to what is stored.
+    def _is_certificate_update_required(self, provider_certificate) -> bool:
+        """Checks the provided certificate and existing certificate.
 
-        Returns True if the certificate was updated
+        Returns True if update is required.
+
+        Args:
+            provider_certificate: str
+        Returns:
+            True if update is required else False
         """
-        existing_certificate = (
-            self._get_stored_certificate() if self._certificate_is_stored() else ""
-        )
+        return self._get_existing_certificate() != provider_certificate
 
-        if existing_certificate != provider_certificate:
-            self._store_certificate(certificate=provider_certificate)
-            return True
-        return False
+    def _get_existing_certificate(self) -> str:
+        """Returns the existing certificate if present else empty string."""
+        return self._get_stored_certificate() if self._certificate_is_stored() else ""
 
     def _generate_private_key(self) -> None:
         """Generates and stores private key."""
@@ -302,30 +347,44 @@ class NRFOperatorCharm(CharmBase):
         self._container.push(path=f"{CERTS_DIR_PATH}/{CSR_NAME}", source=csr.decode().strip())
         logger.info("Pushed CSR to workload")
 
-    def _generate_config_file(self) -> bool:
+    def _generate_nrf_config_file(self) -> str:
         """Handles creation of the NRF config file.
 
         Generates NRF config file based on a given template.
-        Pushes NRF config file to the workload.
-        Calls `_configure_workload` function to forcibly restart the NRF service in order
-        to fetch new config.
 
         Returns:
-            bool: Whether the config file was updated so the service should be restarted.
+            content (str): desired config file content.
         """
-        content = _render_config(
+        return _render_config(
             database_url=self._database_info()["uris"].split(",")[0],
             nrf_ip=_get_pod_ip(),  # type: ignore[arg-type]
             database_name=DATABASE_NAME,
             nrf_sbi_port=NRF_SBI_PORT,
             scheme="https",
         )
-        if not self._config_file_content_matches(content=content):
-            self._push_config_file(
-                content=content,
-            )
+
+    def _is_config_update_required(self, content: str) -> bool:
+        """Decides whether config update is required by checking existence and config content.
+
+        Args:
+            content (str): desired config file content
+
+        Returns:
+            True if config update is required else False
+        """
+        if not self._config_file_is_written() or not self._config_file_content_matches(
+            content=content
+        ):
             return True
         return False
+
+    def _config_file_is_written(self) -> bool:
+        """Returns whether the config file was written to the workload container.
+
+        Returns:
+            bool: Whether the config file was written.
+        """
+        return bool(self._container.exists(f"{BASE_CONFIG_PATH}/{CONFIG_FILE_NAME}"))
 
     def _configure_workload(self, restart: bool = False) -> None:
         """Configures pebble layer for the nrf container."""
