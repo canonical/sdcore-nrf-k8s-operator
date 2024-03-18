@@ -155,33 +155,42 @@ class NRFOperatorCharm(CharmBase):
             # teardown code is necessary to perform if we're removing the
             # charm.
             event.add_status(BlockedStatus("Scaling is not implemented for this charm"))
+            logger.info("Scaling is not implemented for this charm")
             return
         if not self._container.can_connect():
             event.add_status(WaitingStatus("Waiting for container to be ready"))
+            logger.info("Waiting for container to be ready")
             return
         for relation in [DATABASE_RELATION_NAME, "certificates"]:
             if not self._relation_created(relation):
                 event.add_status(BlockedStatus(f"Waiting for {relation} relation to be created"))
+                logger.info("Waiting for %s relation to be created", relation)
                 return
         if not self._database_is_available():
             event.add_status(WaitingStatus("Waiting for the database to be available"))
+            logger.info("Waiting for the database to be available")
             return
         if not self._get_database_uri():
             event.add_status(WaitingStatus("Waiting for database URI"))
+            logger.info("Waiting for database URI")
             return
         if not self._container.exists(path=BASE_CONFIG_PATH) or not self._container.exists(
             path=CERTS_DIR_PATH
         ):
             event.add_status(WaitingStatus("Waiting for storage to be attached"))
+            logger.info("Waiting for storage to be attached")
             return
         if not _get_pod_ip():
             event.add_status(WaitingStatus("Waiting for pod IP address to be available"))
+            logger.info("Waiting for pod IP address to be available")
             return
         if self._csr_is_stored() and not self._get_current_provider_certificate():
             event.add_status(WaitingStatus("Waiting for certificates to be stored"))
+            logger.info("Waiting for certificates to be stored")
             return
         if not self._nrf_service_is_running():
             event.add_status(WaitingStatus("Waiting for NRF service to start"))
+            logger.info("Waiting for NRF service to start")
             return
         event.add_status(ActiveStatus())
 
@@ -331,7 +340,7 @@ class NRFOperatorCharm(CharmBase):
     def _store_certificate(self, certificate: str) -> None:
         """Stores certificate in workload."""
         self._container.push(path=f"{CERTS_DIR_PATH}/{CERTIFICATE_NAME}", source=certificate)
-        logger.info("Pushed certificate pushed to workload")
+        logger.info("Pushed certificate to workload")
 
     def _store_private_key(self, private_key: bytes) -> None:
         """Stores private key in workload."""
@@ -447,7 +456,7 @@ class NRFOperatorCharm(CharmBase):
         if not self._container.can_connect():
             return
         self._container.push(path=f"{BASE_CONFIG_PATH}/{CONFIG_FILE_NAME}", source=content)
-        logger.info("Pushed %s config file", CONFIG_FILE_NAME)
+        logger.info("Pushed %s config file to workload", CONFIG_FILE_NAME)
 
     def _database_is_available(self) -> bool:
         """Returns True if the database is available.
