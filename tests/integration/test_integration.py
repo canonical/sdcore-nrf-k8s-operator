@@ -23,7 +23,6 @@ GRAFANA_AGENT_APPLICATION_NAME = "grafana-agent-k8s"
 
 
 @pytest.fixture(scope="module")
-@pytest.mark.abort_on_fail
 async def deploy_mongodb(ops_test):
     await ops_test.model.deploy(
         DB_CHARM_NAME, application_name=DB_APPLICATION_NAME, channel="6/beta", trust=True
@@ -31,7 +30,6 @@ async def deploy_mongodb(ops_test):
 
 
 @pytest.fixture(scope="module")
-@pytest.mark.abort_on_fail
 async def deploy_grafana_agent(ops_test):
     await ops_test.model.deploy(
         GRAFANA_AGENT_APPLICATION_NAME,
@@ -41,7 +39,6 @@ async def deploy_grafana_agent(ops_test):
 
 
 @pytest.fixture(scope="module")
-@pytest.mark.abort_on_fail
 async def deploy_self_signed_certificates(ops_test):
     await ops_test.model.deploy(
         TLS_APPLICATION_NAME,
@@ -51,7 +48,6 @@ async def deploy_self_signed_certificates(ops_test):
 
 
 @pytest.fixture(scope="module")
-@pytest.mark.abort_on_fail
 async def build_and_deploy(ops_test):
     """Build the charm-under-test and deploy it together with related charms.
 
