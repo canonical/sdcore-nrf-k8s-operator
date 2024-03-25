@@ -109,10 +109,11 @@ class TestCharm(unittest.TestCase):
         self.harness.container_pebble_ready(container_name="nrf")
 
         self.harness.remove_relation(database_relation_id)
+        self.harness.evaluate_status()
 
         self.assertEqual(
             self.harness.model.unit.status,
-            BlockedStatus("Waiting for database relation"),
+            BlockedStatus("Waiting for database relation to be created"),
         )
 
     def test_given_database_not_available_when_pebble_ready_then_status_is_waiting(
