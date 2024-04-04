@@ -49,7 +49,7 @@ LOGGING_RELATION_NAME = "logging"
 
 
 def _get_pod_ip() -> Optional[str]:
-    """Returns the pod IP using juju client.
+    """Return the pod IP using juju client.
 
     Returns:
         str: The pod IP.
@@ -65,7 +65,7 @@ def _render_config(
     nrf_sbi_port: int,
     scheme: str,
 ) -> str:
-    """Renders the nrfcfg config file.
+    """Render the nrfcfg config file.
 
     Args:
         database_name: Name of the database
@@ -123,7 +123,7 @@ class NRFOperatorCharm(CharmBase):
         )
 
     def ready_to_configure(self) -> bool:
-        """Returns whether all preconditions are met to proceed with configuration."""
+        """Return whether all preconditions are met to proceed with configuration."""
         if not self._container.can_connect():
             return False
         for relation in [DATABASE_RELATION_NAME, "certificates"]:
@@ -194,7 +194,7 @@ class NRFOperatorCharm(CharmBase):
         event.add_status(ActiveStatus())
 
     def _configure_nrf(self, event: EventBase) -> None:
-        """Adds pebble layer and manages Juju unit status.
+        """Add pebble layer and manages Juju unit status.
 
         Args:
             event: Juju event
@@ -220,7 +220,7 @@ class NRFOperatorCharm(CharmBase):
         self._publish_nrf_info_for_all_requirers()
 
     def _on_certificates_relation_broken(self, event: RelationBrokenEvent) -> None:
-        """Deletes TLS related artifacts and reconfigures workload."""
+        """Delete TLS related artifacts and reconfigures workload."""
         if not self._container.can_connect():
             event.defer()
             return
@@ -229,7 +229,7 @@ class NRFOperatorCharm(CharmBase):
         self._delete_certificate()
 
     def _on_certificate_expiring(self, event: CertificateExpiringEvent) -> None:
-        """Requests new certificate."""
+        """Request new certificate."""
         if not self._container.can_connect():
             event.defer()
             return
@@ -239,7 +239,7 @@ class NRFOperatorCharm(CharmBase):
         self._request_new_certificate()
 
     def _get_current_provider_certificate(self) -> str | None:
-        """Compares the current certificate request to what is in the interface.
+        """Compare the current certificate request to what is in the interface.
 
         Returns The current valid provider certificate if present
         """
@@ -250,7 +250,7 @@ class NRFOperatorCharm(CharmBase):
         return None
 
     def _is_certificate_update_required(self, provider_certificate) -> bool:
-        """Checks the provided certificate and existing certificate.
+        """Check the provided certificate and existing certificate.
 
         Returns True if update is required.
 
@@ -262,16 +262,16 @@ class NRFOperatorCharm(CharmBase):
         return self._get_existing_certificate() != provider_certificate
 
     def _get_existing_certificate(self) -> str:
-        """Returns the existing certificate if present else empty string."""
+        """Return the existing certificate if present else empty string."""
         return self._get_stored_certificate() if self._certificate_is_stored() else ""
 
     def _generate_private_key(self) -> None:
-        """Generates and stores private key."""
+        """Generate and stores private key."""
         private_key = generate_private_key()
         self._store_private_key(private_key)
 
     def _request_new_certificate(self) -> None:
-        """Generates and stores CSR, and uses to request new certificate."""
+        """Generate and store CSR, and use it to request new certificate."""
         private_key = self._get_stored_private_key()
         csr = generate_csr(
             private_key=private_key,
@@ -282,59 +282,59 @@ class NRFOperatorCharm(CharmBase):
         self._certificates.request_certificate_creation(certificate_signing_request=csr)
 
     def _delete_private_key(self):
-        """Removes private key from workload."""
+        """Remove private key from workload."""
         if not self._private_key_is_stored():
             return
         self._container.remove_path(path=f"{CERTS_DIR_PATH}/{PRIVATE_KEY_NAME}")
         logger.info("Removed private key from workload")
 
     def _delete_csr(self):
-        """Deletes CSR from workload."""
+        """Delete CSR from workload."""
         if not self._csr_is_stored():
             return
         self._container.remove_path(path=f"{CERTS_DIR_PATH}/{CSR_NAME}")
         logger.info("Removed CSR from workload")
 
     def _delete_certificate(self):
-        """Deletes certificate from workload."""
+        """Delete certificate from workload."""
         if not self._certificate_is_stored():
             return
         self._container.remove_path(path=f"{CERTS_DIR_PATH}/{CERTIFICATE_NAME}")
         logger.info("Removed certificate from workload")
 
     def _private_key_is_stored(self) -> bool:
-        """Returns whether private key is stored in workload."""
+        """Return whether private key is stored in workload."""
         return self._container.exists(path=f"{CERTS_DIR_PATH}/{PRIVATE_KEY_NAME}")
 
     def _csr_is_stored(self) -> bool:
-        """Returns whether CSR is stored in workload."""
+        """Return whether CSR is stored in workload."""
         return self._container.exists(path=f"{CERTS_DIR_PATH}/{CSR_NAME}")
 
     def _get_stored_certificate(self) -> str:
-        """Returns stored certificate."""
+        """Return stored certificate."""
         return str(self._container.pull(path=f"{CERTS_DIR_PATH}/{CERTIFICATE_NAME}").read())
 
     def _get_stored_csr(self) -> str:
-        """Returns stored CSR."""
+        """Return stored CSR."""
         return str(self._container.pull(path=f"{CERTS_DIR_PATH}/{CSR_NAME}").read())
 
     def _get_stored_private_key(self) -> bytes:
-        """Returns stored private key."""
+        """Return stored private key."""
         return str(
             self._container.pull(path=f"{CERTS_DIR_PATH}/{PRIVATE_KEY_NAME}").read()
         ).encode()
 
     def _certificate_is_stored(self) -> bool:
-        """Returns whether certificate is stored in workload."""
+        """Return whether certificate is stored in workload."""
         return self._container.exists(path=f"{CERTS_DIR_PATH}/{CERTIFICATE_NAME}")
 
     def _store_certificate(self, certificate: str) -> None:
-        """Stores certificate in workload."""
+        """Store certificate in workload."""
         self._container.push(path=f"{CERTS_DIR_PATH}/{CERTIFICATE_NAME}", source=certificate)
         logger.info("Pushed certificate to workload")
 
     def _store_private_key(self, private_key: bytes) -> None:
-        """Stores private key in workload."""
+        """Store private key in workload."""
         self._container.push(
             path=f"{CERTS_DIR_PATH}/{PRIVATE_KEY_NAME}",
             source=private_key.decode(),
@@ -342,14 +342,14 @@ class NRFOperatorCharm(CharmBase):
         logger.info("Pushed private key to workload")
 
     def _store_csr(self, csr: bytes) -> None:
-        """Stores CSR in workload."""
+        """Store CSR in workload."""
         self._container.push(path=f"{CERTS_DIR_PATH}/{CSR_NAME}", source=csr.decode().strip())
         logger.info("Pushed CSR to workload")
 
     def _generate_nrf_config_file(self) -> str:
-        """Handles creation of the NRF config file.
+        """Handle creation of the NRF config file.
 
-        Generates NRF config file based on a given template.
+        Generate NRF config file based on a given template.
 
         Returns:
             content (str): desired config file content.
@@ -363,7 +363,7 @@ class NRFOperatorCharm(CharmBase):
         )
 
     def _is_config_update_required(self, content: str) -> bool:
-        """Decides whether config update is required by checking existence and config content.
+        """Decide whether config update is required by checking existence and config content.
 
         Args:
             content (str): desired config file content
@@ -378,7 +378,7 @@ class NRFOperatorCharm(CharmBase):
         return False
 
     def _config_file_is_written(self) -> bool:
-        """Returns whether the config file was written to the workload container.
+        """Return whether the config file was written to the workload container.
 
         Returns:
             bool: Whether the config file was written.
@@ -386,7 +386,7 @@ class NRFOperatorCharm(CharmBase):
         return bool(self._container.exists(f"{BASE_CONFIG_PATH}/{CONFIG_FILE_NAME}"))
 
     def _configure_workload(self, restart: bool = False) -> None:
-        """Configures pebble layer for the nrf container."""
+        """Configure pebble layer for the nrf container."""
         plan = self._container.get_plan()
         layer = self._pebble_layer
         if plan.services != layer.services or restart:
@@ -394,7 +394,7 @@ class NRFOperatorCharm(CharmBase):
             self._container.restart(self._service_name)
 
     def _config_file_content_matches(self, content: str) -> bool:
-        """Returns whether the nrfcfg config file content matches the provided content.
+        """Return whether the nrfcfg config file content matches the provided content.
 
         Returns:
             bool: Whether the nrfcfg config file content matches
@@ -428,7 +428,7 @@ class NRFOperatorCharm(CharmBase):
         self.nrf_provider.set_nrf_information_in_all_relations(nrf_url)
 
     def _relation_created(self, relation_name: str) -> bool:
-        """Returns whether a given Juju relation was crated.
+        """Return whether a given Juju relation was created.
 
         Args:
             relation_name (str): Relation name
@@ -439,7 +439,7 @@ class NRFOperatorCharm(CharmBase):
         return bool(self.model.relations[relation_name])
 
     def _push_config_file(self, content: str) -> None:
-        """Pushes config file to workload.
+        """Push config file to workload.
 
         Args:
             content: config file content
@@ -450,7 +450,7 @@ class NRFOperatorCharm(CharmBase):
         logger.info("Pushed %s config file to workload", CONFIG_FILE_NAME)
 
     def _database_is_available(self) -> bool:
-        """Returns True if the database is available.
+        """Return True if the database is available.
 
         Returns:
             bool: True if the database is available.
@@ -458,7 +458,7 @@ class NRFOperatorCharm(CharmBase):
         return self._database.is_resource_created()
 
     def _database_info(self) -> dict:
-        """Returns the database data.
+        """Return the database data.
 
         Returns:
             Dict: The database data.
@@ -468,7 +468,7 @@ class NRFOperatorCharm(CharmBase):
         return self._database.fetch_relation_data()[self._database.relations[0].id]
 
     def _get_database_uri(self) -> str:
-        """Returns the database URI.
+        """Return the database URI.
 
         Returns:
             str: The database URI.
@@ -480,7 +480,7 @@ class NRFOperatorCharm(CharmBase):
 
     @property
     def _pebble_layer(self) -> Layer:
-        """Returns pebble layer for the charm.
+        """Return pebble layer for the charm.
 
         Returns:
             Layer: Pebble Layer
@@ -502,7 +502,7 @@ class NRFOperatorCharm(CharmBase):
 
     @property
     def _environment_variables(self) -> dict:
-        """Returns workload service environment variables.
+        """Return workload service environment variables.
 
         Returns:
             dict: Environment variables
@@ -516,7 +516,7 @@ class NRFOperatorCharm(CharmBase):
         }
 
     def _nrf_service_is_running(self) -> bool:
-        """Returns whether the NRF service is running.
+        """Return whether the NRF service is running.
 
         Returns:
             bool: Whether the NRF service is running.
@@ -531,7 +531,7 @@ class NRFOperatorCharm(CharmBase):
 
     @staticmethod
     def _get_nrf_url() -> str:
-        """Returns NRF URL."""
+        """Return NRF URL."""
         return f"https://nrf:{NRF_SBI_PORT}"
 
 
