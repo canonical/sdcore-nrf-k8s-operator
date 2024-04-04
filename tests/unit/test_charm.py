@@ -4,11 +4,10 @@
 import unittest
 from unittest.mock import Mock, patch
 
+from charm import NRFOperatorCharm
 from charms.tls_certificates_interface.v3.tls_certificates import ProviderCertificate
 from ops import testing
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
-
-from charm import NRFOperatorCharm
 
 DB_APPLICATION_NAME = "mongodb-k8s"
 BASE_CONFIG_PATH = "/etc/nrf"
@@ -60,7 +59,7 @@ class TestCharm(unittest.TestCase):
 
     @staticmethod
     def _read_file(path: str) -> str:
-        """Reads a file and returns as a string.
+        """Read a file and returns as a string.
 
         Args:
             path (str): path to the file.
