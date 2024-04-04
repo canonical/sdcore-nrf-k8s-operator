@@ -5,9 +5,6 @@
 """Charmed operator for the SD-Core NRF service for K8s."""
 
 import logging
-from ipaddress import IPv4Address
-from subprocess import check_output
-from typing import Optional
 
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires  # type: ignore[import]
 from charms.loki_k8s.v1.loki_push_api import LogForwarder
@@ -48,20 +45,10 @@ CERTIFICATE_COMMON_NAME = "nrf.sdcore"
 LOGGING_RELATION_NAME = "logging"
 
 
-def _get_pod_ip() -> Optional[str]:
-    """Return the pod IP using juju client.
-
-    Returns:
-        str: The pod IP.
-    """
-    ip_address = check_output(["unit-get", "private-address"])
-    return str(IPv4Address(ip_address.decode().strip())) if ip_address else None
-
-
 def _render_config(
     database_name: str,
     database_url: str,
-    nrf_ip: str,
+    nrf_host: str,
     nrf_sbi_port: int,
     scheme: str,
 ) -> str:
@@ -70,7 +57,7 @@ def _render_config(
     Args:
         database_name: Name of the database
         database_url: URL of the database
-        nrf_ip: IP of the NRF service
+        nrf_host: Hostname or IP of the NRF service
         nrf_sbi_port: Port of the NRF service
         scheme: SBI interface scheme ("http" or "https")
 
@@ -83,7 +70,7 @@ def _render_config(
         database_name=database_name,
         database_url=database_url,
         nrf_sbi_port=nrf_sbi_port,
-        nrf_ip=nrf_ip,
+        nrf_ip=nrf_host,
         scheme=scheme,
     )
     return content
@@ -137,8 +124,6 @@ class NRFOperatorCharm(CharmBase):
             path=CERTS_DIR_PATH
         ):
             return False
-        if not _get_pod_ip():
-            return False
         return True
 
     def _on_collect_unit_status(self, event: CollectStatusEvent):  # noqa C901
@@ -178,10 +163,6 @@ class NRFOperatorCharm(CharmBase):
         ):
             event.add_status(WaitingStatus("Waiting for storage to be attached"))
             logger.info("Waiting for storage to be attached")
-            return
-        if not _get_pod_ip():
-            event.add_status(WaitingStatus("Waiting for pod IP address to be available"))
-            logger.info("Waiting for pod IP address to be available")
             return
         if self._csr_is_stored() and not self._get_current_provider_certificate():
             event.add_status(WaitingStatus("Waiting for certificates to be stored"))
@@ -356,7 +337,7 @@ class NRFOperatorCharm(CharmBase):
         """
         return _render_config(
             database_url=self._database_info()["uris"].split(",")[0],
-            nrf_ip=_get_pod_ip(),  # type: ignore[arg-type]
+            nrf_host=self.model.app.name,
             database_name=DATABASE_NAME,
             nrf_sbi_port=NRF_SBI_PORT,
             scheme="https",
@@ -529,10 +510,9 @@ class NRFOperatorCharm(CharmBase):
             return False
         return service.is_running()
 
-    @staticmethod
-    def _get_nrf_url() -> str:
+    def _get_nrf_url(self) -> str:
         """Return NRF URL."""
-        return f"https://nrf:{NRF_SBI_PORT}"
+        return f"https://{self.model.app.name}:{NRF_SBI_PORT}"
 
 
 if __name__ == "__main__":
