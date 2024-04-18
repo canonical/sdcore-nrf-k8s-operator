@@ -369,10 +369,16 @@ class NRFOperatorCharm(CharmBase):
     def _configure_workload(self, restart: bool = False) -> None:
         """Configure pebble layer for the nrf container."""
         plan = self._container.get_plan()
-        layer = self._pebble_layer
-        if plan.services != layer.services or restart:
-            self._container.add_layer("nrf", layer, combine=True)
+        if plan.services != self._pebble_layer.services:
+            self._container.add_layer(
+                self._container_name, self._pebble_layer, combine=True
+            )
+            self._container.replan()
+            logger.info("New layer added: %s", self._pebble_layer)
+        if restart:
             self._container.restart(self._service_name)
+            logger.info("Restarted container %s", self._service_name)
+            return
 
     def _config_file_content_matches(self, content: str) -> bool:
         """Return whether the nrfcfg config file content matches the provided content.
