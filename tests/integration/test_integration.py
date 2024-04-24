@@ -127,6 +127,7 @@ async def test_remove_nrf(ops_test: OpsTest, build_and_deploy):
 
 
 async def _deploy_mongodb(ops_test: OpsTest):
+    assert ops_test.model
     await ops_test.model.deploy(
         DB_CHARM_NAME,
         application_name=DB_APPLICATION_NAME,
