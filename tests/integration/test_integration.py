@@ -136,7 +136,8 @@ async def _deploy_mongodb(ops_test: OpsTest):
     )
 
 
-async def _deploy_grafana_agent(ops_test):
+async def _deploy_grafana_agent(ops_test: OpsTest):
+    assert ops_test.model
     await ops_test.model.deploy(
         GRAFANA_AGENT_APPLICATION_NAME,
         application_name=GRAFANA_AGENT_APPLICATION_NAME,
@@ -144,7 +145,8 @@ async def _deploy_grafana_agent(ops_test):
     )
 
 
-async def _deploy_self_signed_certificates(ops_test):
+async def _deploy_self_signed_certificates(ops_test: OpsTest):
+    assert ops_test.model
     await ops_test.model.deploy(
         TLS_APPLICATION_NAME,
         application_name=TLS_APPLICATION_NAME,
