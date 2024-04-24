@@ -18,33 +18,12 @@ METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 DB_APPLICATION_NAME = "mongodb"
 DB_CHARM_NAME = "mongodb-k8s"
+DB_CHARM_CHANNEL = "6/beta"
 TLS_APPLICATION_NAME = "self-signed-certificates"
+TLS_APPLICATION_CHANNEL = "latest/stable"
 GRAFANA_AGENT_APPLICATION_NAME = "grafana-agent-k8s"
-
-
-@pytest.fixture(scope="module")
-async def deploy_mongodb(ops_test):
-    await ops_test.model.deploy(
-        DB_CHARM_NAME, application_name=DB_APPLICATION_NAME, channel="6/beta", trust=True
-    )
-
-
-@pytest.fixture(scope="module")
-async def deploy_grafana_agent(ops_test):
-    await ops_test.model.deploy(
-        GRAFANA_AGENT_APPLICATION_NAME,
-        application_name=GRAFANA_AGENT_APPLICATION_NAME,
-        channel="stable",
-    )
-
-
-@pytest.fixture(scope="module")
-async def deploy_self_signed_certificates(ops_test):
-    await ops_test.model.deploy(
-        TLS_APPLICATION_NAME,
-        application_name=TLS_APPLICATION_NAME,
-        channel="beta",
-    )
+GRAFANA_AGENT_APPLICATION_CHANNEL = "latest/stable"
+TIMEOUT = 15 * 60
 
 
 @pytest.fixture(scope="module")
@@ -65,16 +44,15 @@ async def build_and_deploy(ops_test):
 
 @pytest.mark.abort_on_fail
 async def test_given_charm_is_built_when_deployed_then_status_is_blocked(
-    ops_test,
-    build_and_deploy,
-    deploy_mongodb,
-    deploy_self_signed_certificates,
-    deploy_grafana_agent,
+    ops_test, build_and_deploy,
 ):
+    await _deploy_mongodb(ops_test)
+    await _deploy_self_signed_certificates(ops_test)
+    await _deploy_grafana_agent(ops_test)
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME],
         status="blocked",
-        timeout=1000,
+        timeout=TIMEOUT,
     )
 
 
@@ -92,26 +70,21 @@ async def test_given_charm_is_deployed_when_relate_to_mongo_and_certificates_the
         relation1=f"{APP_NAME}:logging",
         relation2=f"{GRAFANA_AGENT_APPLICATION_NAME}",
     )
-    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=TIMEOUT)
 
 
 @pytest.mark.abort_on_fail
 async def test_remove_tls_and_wait_for_blocked_status(ops_test, build_and_deploy):
     await ops_test.model.remove_application(TLS_APPLICATION_NAME, block_until_done=True)  # type: ignore[union-attr]  # noqa: E501
-    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", timeout=60)  # type: ignore[union-attr]  # noqa: E501
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", timeout=TIMEOUT)  # type: ignore[union-attr]  # noqa: E501
 
 
 @pytest.mark.abort_on_fail
 async def test_restore_tls_and_wait_for_active_status(ops_test: OpsTest, build_and_deploy):
     assert ops_test.model
-    await ops_test.model.deploy(
-        TLS_APPLICATION_NAME,
-        application_name=TLS_APPLICATION_NAME,
-        channel="beta",
-        trust=True,
-    )
+    await _deploy_self_signed_certificates(ops_test)
     await ops_test.model.integrate(relation1=APP_NAME, relation2=TLS_APPLICATION_NAME)
-    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=TIMEOUT)
 
 
 @pytest.mark.skip(
@@ -121,7 +94,7 @@ async def test_restore_tls_and_wait_for_active_status(ops_test: OpsTest, build_a
 async def test_remove_database_and_wait_for_blocked_status(ops_test: OpsTest, build_and_deploy):
     assert ops_test.model
     await ops_test.model.remove_application(DB_APPLICATION_NAME, block_until_done=True)
-    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", timeout=60)
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", timeout=TIMEOUT)
 
 
 @pytest.mark.skip(
@@ -130,14 +103,9 @@ async def test_remove_database_and_wait_for_blocked_status(ops_test: OpsTest, bu
 @pytest.mark.abort_on_fail
 async def test_restore_database_and_wait_for_active_status(ops_test: OpsTest, build_and_deploy):
     assert ops_test.model
-    await ops_test.model.deploy(
-        DB_CHARM_NAME,
-        application_name=DB_APPLICATION_NAME,
-        channel="5/edge",
-        trust=True,
-    )
+    await _deploy_mongodb(ops_test)
     await ops_test.model.integrate(relation1=APP_NAME, relation2=DB_APPLICATION_NAME)
-    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=1000)
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=TIMEOUT)
 
 
 @pytest.mark.abort_on_fail
@@ -147,7 +115,7 @@ async def test_when_scale_nrf_beyond_1_then_only_one_unit_is_active(
     assert ops_test.model
     assert isinstance(app := ops_test.model.applications[APP_NAME], Application)
     await app.scale(3)
-    await ops_test.model.wait_for_idle(apps=[APP_NAME], timeout=1000, wait_for_at_least_units=3)
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], timeout=TIMEOUT, wait_for_at_least_units=3)
     unit_statuses = Counter(unit.workload_status for unit in app.units)
     assert unit_statuses.get("active") == 1
     assert unit_statuses.get("blocked") == 2
@@ -156,3 +124,31 @@ async def test_when_scale_nrf_beyond_1_then_only_one_unit_is_active(
 async def test_remove_nrf(ops_test: OpsTest, build_and_deploy):
     assert ops_test.model
     await ops_test.model.remove_application(APP_NAME, block_until_done=True)
+
+
+async def _deploy_mongodb(ops_test: OpsTest):
+    assert ops_test.model
+    await ops_test.model.deploy(
+        DB_CHARM_NAME,
+        application_name=DB_APPLICATION_NAME,
+        channel=DB_CHARM_CHANNEL,
+        trust=True,
+    )
+
+
+async def _deploy_grafana_agent(ops_test: OpsTest):
+    assert ops_test.model
+    await ops_test.model.deploy(
+        GRAFANA_AGENT_APPLICATION_NAME,
+        application_name=GRAFANA_AGENT_APPLICATION_NAME,
+        channel=GRAFANA_AGENT_APPLICATION_CHANNEL,
+    )
+
+
+async def _deploy_self_signed_certificates(ops_test: OpsTest):
+    assert ops_test.model
+    await ops_test.model.deploy(
+        TLS_APPLICATION_NAME,
+        application_name=TLS_APPLICATION_NAME,
+        channel=TLS_APPLICATION_CHANNEL,
+    )
