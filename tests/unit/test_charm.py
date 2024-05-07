@@ -1,27 +1,54 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-import unittest
 from unittest.mock import Mock, patch
 
+import pytest
 from charm import NRFOperatorCharm
 from charms.tls_certificates_interface.v3.tls_certificates import ProviderCertificate
 from ops import testing
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 
 DB_APPLICATION_NAME = "mongodb-k8s"
+DB_RELATION_NAME = "database"
 BASE_CONFIG_PATH = "/etc/nrf"
 CONFIG_FILE_NAME = "nrfcfg.yaml"
 TLS_APPLICATION_NAME = "self-signed-certificates"
 TLS_RELATION_NAME = "certificates"
+NAMESPACE = "whatever"
 
 
-class TestCharm(unittest.TestCase):
+class TestCharm:
+    patcher_generate_crs = patch("charm.generate_csr")
+    patcher_generate_private_key = patch("charm.generate_private_key")
+    patcher_get_assigned_certificates = patch(
+        "charms.tls_certificates_interface.v3.tls_certificates.TLSCertificatesRequiresV3.get_assigned_certificates",
+    )
+    patcher_request_certificate_creation = patch(
+        "charms.tls_certificates_interface.v3.tls_certificates.TLSCertificatesRequiresV3.request_certificate_creation",
+    )
+    patcher_resource_created = patch("charms.data_platform_libs.v0.data_interfaces.DatabaseRequires.is_resource_created")  # noqa: E501
+
+    @pytest.fixture()
     def setUp(self):
+        self.mock_generate_csr = TestCharm.patcher_generate_crs.start()
+        self.mock_generate_private_key = TestCharm.patcher_generate_private_key.start()
+        self.mock_get_assigned_certificates = TestCharm.patcher_get_assigned_certificates.start()
+        self.mock_request_certificate_creation = TestCharm.patcher_request_certificate_creation.start()  # noqa: E501
+        self.mock_resource_created = TestCharm.patcher_resource_created.start()
+
+    def tearDown(self) -> None:
+        patch.stopall()
+
+    @pytest.fixture(autouse=True)
+    def harness(self, setUp, request):
         self.harness = testing.Harness(NRFOperatorCharm)
-        self.addCleanup(self.harness.cleanup)
+        self.harness.set_model_name(name=NAMESPACE)
         self.harness.set_leader(is_leader=True)
         self.harness.begin()
+        yield self.harness
+        self.harness.cleanup()
+        request.addfinalizer(self.tearDown)
 
     def _create_database_relation(self) -> int:
         """Create a database relation.
@@ -30,7 +57,7 @@ class TestCharm(unittest.TestCase):
             relation_id: ID of the created relation
         """
         relation_id = self.harness.add_relation(
-            relation_name="database",
+            relation_name=DB_RELATION_NAME,
             remote_app=DB_APPLICATION_NAME,
         )
         self.harness.add_relation_unit(
@@ -75,10 +102,7 @@ class TestCharm(unittest.TestCase):
         self.harness.container_pebble_ready(container_name="nrf")
         self.harness.evaluate_status()
 
-        self.assertEqual(
-            self.harness.model.unit.status,
-            BlockedStatus("Waiting for database relation to be created"),
-        )
+        assert self.harness.model.unit.status == BlockedStatus("Waiting for database relation to be created")  # noqa: E501
 
     def test_given_certificates_relation_not_created_when_pebble_ready_then_status_is_blocked(
         self,
@@ -87,10 +111,7 @@ class TestCharm(unittest.TestCase):
         self._create_database_relation()
         self.harness.evaluate_status()
 
-        self.assertEqual(
-            self.harness.model.unit.status,
-            BlockedStatus(f"Waiting for {TLS_RELATION_NAME} relation to be created"),
-        )
+        assert self.harness.model.unit.status == BlockedStatus(f"Waiting for {TLS_RELATION_NAME} relation to be created")  # noqa: E501
 
     def test_given_nrf_charm_in_active_state_when_database_relation_breaks_then_status_is_blocked(
         self,
@@ -98,6 +119,10 @@ class TestCharm(unittest.TestCase):
         self.harness.add_storage("config", attach=True)
         self.harness.add_storage("certs", attach=True)
         certificate = "Whatever certificate content"
+        private_key = b"whatever key content"
+        self.mock_generate_private_key.return_value = private_key
+        csr = b"whatever csr content"
+        self.mock_generate_csr.return_value = csr
         root = self.harness.get_filesystem_root("nrf")
         (root / "support/TLS/nrf.pem").write_text(certificate)
         database_relation_id = self._create_database_relation_and_populate_data()
@@ -107,37 +132,30 @@ class TestCharm(unittest.TestCase):
         self.harness.remove_relation(database_relation_id)
         self.harness.evaluate_status()
 
-        self.assertEqual(
-            self.harness.model.unit.status,
-            BlockedStatus("Waiting for database relation to be created"),
-        )
+        assert self.harness.model.unit.status == BlockedStatus("Waiting for database relation to be created")  # noqa: E501
+
+
 
     def test_given_database_not_available_when_pebble_ready_then_status_is_waiting(
         self,
     ):
         self._create_database_relation()
+        self.mock_resource_created.return_value = False
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.container_pebble_ready(container_name="nrf")
         self.harness.evaluate_status()
-        self.assertEqual(
-            self.harness.model.unit.status,
-            WaitingStatus("Waiting for the database to be available"),
-        )
+        assert self.harness.model.unit.status == WaitingStatus("Waiting for the database to be available")  # noqa: E501
 
-    @patch("charms.data_platform_libs.v0.data_interfaces.DatabaseRequires.is_resource_created")
+
     def test_given_database_information_not_available_when_pebble_ready_then_status_is_waiting(
         self,
-        patch_is_resource_created,
     ):
-        patch_is_resource_created.return_value = True
+        self.mock_resource_created.return_value = True
         self._create_database_relation()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.container_pebble_ready(container_name="nrf")
         self.harness.evaluate_status()
-        self.assertEqual(
-            self.harness.model.unit.status,
-            WaitingStatus("Waiting for database URI"),
-        )
+        assert self.harness.model.unit.status == WaitingStatus("Waiting for database URI")
 
     def test_given_storage_not_attached_when_pebble_ready_then_status_is_waiting(
         self,
@@ -146,55 +164,43 @@ class TestCharm(unittest.TestCase):
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.container_pebble_ready(container_name="nrf")
         self.harness.evaluate_status()
-        self.assertEqual(
-            self.harness.model.unit.status,
-            WaitingStatus("Waiting for storage to be attached"),
-        )
+        assert self.harness.model.unit.status == WaitingStatus("Waiting for storage to be attached")  # noqa: E501
 
-    @patch("charm.generate_csr")
-    @patch("charm.generate_private_key")
+
     def test_given_certificates_not_stored_when_pebble_ready_then_status_is_waiting(
-        self, patch_generate_private_key, patch_generate_csr
+        self
     ):
         self.harness.add_storage("config", attach=True)
         self.harness.add_storage("certs", attach=True)
         private_key = b"whatever key content"
-        patch_generate_private_key.return_value = private_key
+        self.mock_generate_private_key.return_value = private_key
         csr = b"whatever csr content"
-        patch_generate_csr.return_value = csr
+        self.mock_generate_csr.return_value = csr
         self.harness.set_can_connect(container="nrf", val=True)
         self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.container_pebble_ready("nrf")
         self.harness.evaluate_status()
-        self.assertEqual(
-            self.harness.model.unit.status,
-            WaitingStatus("Waiting for certificates to be stored"),
-        )
+        assert self.harness.model.unit.status ==  WaitingStatus("Waiting for certificates to be stored")  # noqa: E501
 
-    @patch(
-        "charms.tls_certificates_interface.v3.tls_certificates.TLSCertificatesRequiresV3.get_assigned_certificates",  # noqa: E501
-    )
-    @patch("charm.generate_csr")
-    @patch("charm.generate_private_key")
+
+
+
     def test_given_database_info_and_storage_attached_and_certs_stored_when_pebble_ready_then_config_file_is_rendered_and_pushed(  # noqa: E501
         self,
-        patch_generate_private_key,
-        patch_generate_csr,
-        patch_get_assigned_certificates,
     ):
         self.harness.add_storage("config", attach=True)
         self.harness.add_storage("certs", attach=True)
         root = self.harness.get_filesystem_root("nrf")
         private_key = b"whatever key content"
-        patch_generate_private_key.return_value = private_key
+        self.mock_generate_private_key.return_value = private_key
         certificate = "Whatever certificate content"
         csr = b"whatever csr content"
-        patch_generate_csr.return_value = csr
+        self.mock_generate_csr.return_value = csr
         provider_certificate = Mock(ProviderCertificate)
         provider_certificate.certificate = certificate
         provider_certificate.csr = csr.decode()
-        patch_get_assigned_certificates.return_value = [
+        self.mock_get_assigned_certificates.return_value = [
             provider_certificate,
         ]
         (root / "support/TLS/nrf.csr").write_text(csr.decode())
@@ -204,12 +210,10 @@ class TestCharm(unittest.TestCase):
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.container_pebble_ready(container_name="nrf")
         self.harness.evaluate_status()
-        self.assertEqual(self.harness.model.unit.status, ActiveStatus(""))
+        assert self.harness.model.unit.status == ActiveStatus("")
         with open("tests/unit/expected_config/config.conf") as expected_config_file:
             expected_content = expected_config_file.read()
-            self.assertEqual(
-                (root / f"etc/nrf/{CONFIG_FILE_NAME}").read_text(), expected_content.strip()
-            )
+            assert (root / f"etc/nrf/{CONFIG_FILE_NAME}").read_text() == expected_content.strip()
 
     def test_given_content_of_config_file_not_changed_when_pebble_ready_then_config_file_is_not_pushed(  # noqa: E501
         self,
@@ -226,33 +230,25 @@ class TestCharm(unittest.TestCase):
         self.harness.set_can_connect(container="nrf", val=True)
         self._create_database_relation_and_populate_data()
         self.harness.container_pebble_ready(container_name="nrf")
-        self.assertEqual(
-            (root / f"etc/nrf/{CONFIG_FILE_NAME}").stat().st_mtime, config_modification_time
-        )
+        assert(root / f"etc/nrf/{CONFIG_FILE_NAME}").stat().st_mtime == config_modification_time
 
-    @patch(
-        "charms.tls_certificates_interface.v3.tls_certificates.TLSCertificatesRequiresV3.get_assigned_certificates",  # noqa: E501
-    )
-    @patch("charm.generate_csr")
-    @patch("charm.generate_private_key")
+
+
     def test_given_config_pushed_when_pebble_ready_then_pebble_plan_is_applied(
         self,
-        patch_generate_private_key,
-        patch_generate_csr,
-        patch_get_assigned_certificates,
     ):
         self.harness.add_storage("config", attach=True)
         self.harness.add_storage("certs", attach=True)
         root = self.harness.get_filesystem_root("nrf")
         private_key = b"whatever key content"
-        patch_generate_private_key.return_value = private_key
+        self.mock_generate_private_key.return_value = private_key
         certificate = "Whatever certificate content"
         csr = b"whatever csr content"
-        patch_generate_csr.return_value = csr
+        self.mock_generate_csr.return_value = csr
         provider_certificate = Mock(ProviderCertificate)
         provider_certificate.certificate = certificate
         provider_certificate.csr = csr.decode()
-        patch_get_assigned_certificates.return_value = [
+        self.mock_get_assigned_certificates.return_value = [
             provider_certificate,
         ]
         (root / "support/TLS/nrf.csr").write_text(csr.decode())
@@ -285,31 +281,24 @@ class TestCharm(unittest.TestCase):
 
         updated_plan = self.harness.get_container_pebble_plan("nrf").to_dict()
 
-        self.assertEqual(expected_plan, updated_plan)
+        assert expected_plan == updated_plan
 
-    @patch(
-        "charms.tls_certificates_interface.v3.tls_certificates.TLSCertificatesRequiresV3.get_assigned_certificates",  # noqa: E501
-    )
-    @patch("charm.generate_csr")
-    @patch("charm.generate_private_key")
+
     def test_given_database_relation_is_created_and_config_file_is_written_when_pebble_ready_then_status_is_active(  # noqa: E501
         self,
-        patch_generate_private_key,
-        patch_generate_csr,
-        patch_get_assigned_certificates,
     ):
         self.harness.add_storage("config", attach=True)
         self.harness.add_storage("certs", attach=True)
         root = self.harness.get_filesystem_root("nrf")
         private_key = b"whatever key content"
-        patch_generate_private_key.return_value = private_key
+        self.mock_generate_private_key.return_value = private_key
         certificate = "Whatever certificate content"
         csr = b"whatever csr content"
-        patch_generate_csr.return_value = csr
+        self.mock_generate_csr.return_value = csr
         provider_certificate = Mock(ProviderCertificate)
         provider_certificate.certificate = certificate
         provider_certificate.csr = csr.decode()
-        patch_get_assigned_certificates.return_value = [
+        self.mock_get_assigned_certificates.return_value = [
             provider_certificate,
         ]
         (root / "support/TLS/nrf.csr").write_text(csr.decode())
@@ -325,31 +314,23 @@ class TestCharm(unittest.TestCase):
         self.harness.container_pebble_ready("nrf")
         self.harness.evaluate_status()
 
-        self.assertEqual(self.harness.model.unit.status, ActiveStatus())
+        assert self.harness.model.unit.status == ActiveStatus()
 
-    @patch(
-        "charms.tls_certificates_interface.v3.tls_certificates.TLSCertificatesRequiresV3.get_assigned_certificates",  # noqa: E501
-    )
-    @patch("charm.generate_csr")
-    @patch("charm.generate_private_key")
     def test_given_https_nrf_url_and_service_is_running_when_fiveg_nrf_relation_joined_then_nrf_url_is_in_relation_databag(  # noqa: E501
         self,
-        patch_generate_private_key,
-        patch_generate_csr,
-        patch_get_assigned_certificates,
     ):
         self.harness.add_storage(storage_name="certs", attach=True)
         self.harness.add_storage(storage_name="config", attach=True)
         root = self.harness.get_filesystem_root("nrf")
         private_key = b"whatever key content"
-        patch_generate_private_key.return_value = private_key
+        self.mock_generate_private_key.return_value = private_key
         certificate = "Whatever certificate content"
         csr = b"whatever csr content"
-        patch_generate_csr.return_value = csr
+        self.mock_generate_csr.return_value = csr
         provider_certificate = Mock(ProviderCertificate)
         provider_certificate.certificate = certificate
         provider_certificate.csr = csr.decode()
-        patch_get_assigned_certificates.return_value = [
+        self.mock_get_assigned_certificates.return_value = [
             provider_certificate,
         ]
         (root / "support/TLS/nrf.pem").write_text(certificate)
@@ -368,31 +349,23 @@ class TestCharm(unittest.TestCase):
         relation_data = self.harness.get_relation_data(
             relation_id=relation_id, app_or_unit=self.harness.charm.app.name
         )
-        self.assertEqual(relation_data["url"], "https://sdcore-nrf-k8s:29510")
+        assert relation_data["url"] == "https://sdcore-nrf-k8s:29510"
 
-    @patch(
-        "charms.tls_certificates_interface.v3.tls_certificates.TLSCertificatesRequiresV3.get_assigned_certificates",  # noqa: E501
-    )
-    @patch("charm.generate_csr")
-    @patch("charm.generate_private_key")
     def test_service_starts_running_after_nrf_relation_joined_when_fiveg_pebble_ready_then_nrf_url_is_in_relation_databag(  # noqa: E501
-        self,
-        patch_generate_private_key,
-        patch_generate_csr,
-        patch_get_assigned_certificates,
+        self
     ):
         self.harness.add_storage("config", attach=True)
         self.harness.add_storage("certs", attach=True)
         root = self.harness.get_filesystem_root("nrf")
         private_key = b"whatever key content"
-        patch_generate_private_key.return_value = private_key
+        self.mock_generate_private_key.return_value = private_key
         certificate = "Whatever certificate content"
         csr = b"whatever csr content"
-        patch_generate_csr.return_value = csr
+        self.mock_generate_csr.return_value = csr
         provider_certificate = Mock(ProviderCertificate)
         provider_certificate.certificate = certificate
         provider_certificate.csr = csr.decode()
-        patch_get_assigned_certificates.return_value = [
+        self.mock_get_assigned_certificates.return_value = [
             provider_certificate,
         ]
         (root / "support/TLS/nrf.csr").write_text(csr.decode())
@@ -429,28 +402,24 @@ class TestCharm(unittest.TestCase):
         relation_2_data = self.harness.get_relation_data(
             relation_id=relation_2_id, app_or_unit=self.harness.charm.app.name
         )
-        self.assertEqual(relation_1_data["url"], "https://sdcore-nrf-k8s:29510")
-        self.assertEqual(relation_2_data["url"], "https://sdcore-nrf-k8s:29510")
+        assert relation_1_data["url"] == "https://sdcore-nrf-k8s:29510"
+        assert relation_2_data["url"] == "https://sdcore-nrf-k8s:29510"
 
-    @patch("charm.generate_csr")
-    @patch("charm.generate_private_key")
     def test_given_can_connect_when_on_certificates_relation_created_then_private_key_is_generated(
         self,
-        patch_generate_private_key,
-        patch_generate_csr,
     ):
         private_key = b"whatever key content"
         self.harness.add_storage("config", attach=True)
         self.harness.add_storage("certs", attach=True)
         root = self.harness.get_filesystem_root("nrf")
-        patch_generate_private_key.return_value = private_key
+        self.mock_generate_private_key.return_value = private_key
         csr = b"whatever csr content"
-        patch_generate_csr.return_value = csr
+        self.mock_generate_csr.return_value = csr
         self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.set_can_connect(container="nrf", val=True)
         self.harness.container_pebble_ready("nrf")
-        self.assertEqual((root / "support/TLS/nrf.key").read_text(), private_key.decode())
+        assert (root / "support/TLS/nrf.key").read_text() == private_key.decode()
 
     def test_given_certificates_are_stored_when_on_certificates_relation_broken_then_certificates_are_removed(  # noqa: E501
         self,
@@ -467,11 +436,11 @@ class TestCharm(unittest.TestCase):
 
         self.harness.charm._on_certificates_relation_broken(event=Mock)
 
-        with self.assertRaises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError):
             (root / "support/TLS/nrf.key").read_text()
-        with self.assertRaises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError):
             (root / "support/TLS/nrf.pem").read_text()
-        with self.assertRaises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError):
             (root / "support/TLS/nrf.csr").read_text()
 
     def test_given_certificates_are_stored_when_on_certificates_relation_broken_then_status_is_blocked(  # noqa: E501
@@ -493,61 +462,43 @@ class TestCharm(unittest.TestCase):
         )
         self.harness.remove_relation(cert_rel_id)
         self.harness.evaluate_status()
-        self.assertEqual(
-            self.harness.charm.unit.status,
-            BlockedStatus(f"Waiting for {TLS_RELATION_NAME} relation to be created"),
-        )
+        assert self.harness.charm.unit.status == BlockedStatus(f"Waiting for {TLS_RELATION_NAME} relation to be created")  # noqa: E501
 
-    @patch("charm.generate_private_key")
-    @patch(
-        "charms.tls_certificates_interface.v3.tls_certificates.TLSCertificatesRequiresV3.request_certificate_creation",  # noqa: E501
-        new=Mock,
-    )
-    @patch("charm.generate_csr")
+
     def test_given_private_key_exists_when_pebble_ready_then_csr_is_generated(
-        self,
-        patch_generate_csr,
-        patch_generate_private_key,
+        self
     ):
         self.harness.add_storage("config", attach=True)
         self.harness.add_storage("certs", attach=True)
         private_key = "whatever key content"
-        patch_generate_private_key.return_value = private_key
+        self.mock_generate_private_key.return_value = private_key
         root = self.harness.get_filesystem_root("nrf")
         (root / "support/TLS/nrf.key").write_text(private_key)
         csr = b"whatever csr content"
-        patch_generate_csr.return_value = csr
+        self.mock_generate_csr.return_value = csr
         self._create_database_relation_and_populate_data()
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.set_can_connect(container="nrf", val=True)
 
         self.harness.container_pebble_ready(container_name="nrf")
 
-        self.assertEqual((root / "support/TLS/nrf.csr").read_text(), csr.decode())
+        assert (root / "support/TLS/nrf.csr").read_text() == csr.decode()
 
-    @patch(
-        "charms.tls_certificates_interface.v3.tls_certificates.TLSCertificatesRequiresV3.get_assigned_certificates",  # noqa: E501
-    )
-    @patch("charm.generate_csr")
-    @patch("charm.generate_private_key")
     def test_given_csr_matches_stored_one_when_certificate_available_then_certificate_is_pushed(
-        self,
-        patch_generate_private_key,
-        patch_generate_csr,
-        patch_get_assigned_certificates,
+        self
     ):
         self.harness.add_storage("config", attach=True)
         self.harness.add_storage("certs", attach=True)
         root = self.harness.get_filesystem_root("nrf")
         private_key = b"whatever key content"
-        patch_generate_private_key.return_value = private_key
+        self.mock_generate_private_key.return_value = private_key
         certificate = "Whatever certificate content"
         csr = b"whatever csr content"
-        patch_generate_csr.return_value = csr
+        self.mock_generate_csr.return_value = csr
         provider_certificate = Mock(ProviderCertificate)
         provider_certificate.certificate = certificate
         provider_certificate.csr = csr.decode()
-        patch_get_assigned_certificates.return_value = [
+        self.mock_get_assigned_certificates.return_value = [
             provider_certificate,
         ]
         (root / "support/TLS/nrf.csr").write_text(csr.decode())
@@ -557,32 +508,23 @@ class TestCharm(unittest.TestCase):
         self.harness.set_can_connect(container="nrf", val=False)
         self.harness.container_pebble_ready("nrf")
 
-        self.assertEqual((root / "support/TLS/nrf.pem").read_text(), certificate)
+        assert (root / "support/TLS/nrf.pem").read_text() == certificate
 
-    @patch(
-        "charms.tls_certificates_interface.v3.tls_certificates.TLSCertificatesRequiresV3.get_assigned_certificates",  # noqa: E501
-    )
-    @patch("charm.generate_csr")
-    @patch("charm.generate_private_key")
     def test_given_csr_doesnt_match_stored_one_when_certificate_available_then_certificate_is_not_pushed(  # noqa: E501
         self,
-        patch_generate_private_key,
-        patch_generate_csr,
-        patch_get_assigned_certificates,
     ):
-
         self.harness.add_storage("config", attach=True)
         self.harness.add_storage("certs", attach=True)
         root = self.harness.get_filesystem_root("nrf")
         private_key = b"whatever key content"
-        patch_generate_private_key.return_value = private_key
+        self.mock_generate_private_key.return_value = private_key
         certificate = "Whatever certificate content"
         csr = b"whatever csr content"
-        patch_generate_csr.return_value = csr
+        self.mock_generate_csr.return_value = csr
         provider_certificate = Mock(ProviderCertificate)
         provider_certificate.certificate = certificate
         provider_certificate.csr = "This is a different CSR"
-        patch_get_assigned_certificates.return_value = [
+        self.mock_get_assigned_certificates.return_value = [
             provider_certificate,
         ]
         (root / "support/TLS/nrf.csr").write_text(csr.decode())
@@ -590,16 +532,13 @@ class TestCharm(unittest.TestCase):
         self.harness.add_relation(relation_name=TLS_RELATION_NAME, remote_app=TLS_APPLICATION_NAME)
         self.harness.set_can_connect(container="nrf", val=False)
         self.harness.container_pebble_ready("nrf")
-        with self.assertRaises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError):
             (root / "support/TLS/nrf.pem").read_text()
 
-    @patch(
-        "charms.tls_certificates_interface.v3.tls_certificates.TLSCertificatesRequiresV3.request_certificate_creation",  # noqa: E501
-    )
-    @patch("charm.generate_csr")
     def test_given_certificate_does_not_match_stored_one_when_certificate_expiring_then_certificate_is_not_requested(  # noqa: E501
-        self, patch_generate_csr, patch_request_certificate_creation
+        self,
     ):
+        self.harness.add_storage("config", attach=True)
         self.harness.add_storage("certs", attach=True)
         certificate = "Stored certificate content"
         root = self.harness.get_filesystem_root("nrf")
@@ -607,19 +546,15 @@ class TestCharm(unittest.TestCase):
         event = Mock()
         event.certificate = "Relation certificate content (different from stored)"
         csr = b"whatever csr content"
-        patch_generate_csr.return_value = csr
+        self.mock_generate_csr.return_value = csr
         self.harness.set_can_connect(container="nrf", val=True)
 
         self.harness.charm._on_certificate_expiring(event=event)
 
-        patch_request_certificate_creation.assert_not_called()
+        self.mock_request_certificate_creation.assert_not_called()
 
-    @patch(
-        "charms.tls_certificates_interface.v3.tls_certificates.TLSCertificatesRequiresV3.request_certificate_creation",  # noqa: E501
-    )
-    @patch("charm.generate_csr")
     def test_given_certificate_matches_stored_one_when_certificate_expiring_then_certificate_is_requested(  # noqa: E501
-        self, patch_generate_csr, patch_request_certificate_creation
+        self,
     ):
         self.harness.add_storage("certs", attach=True)
         private_key = "whatever key content"
@@ -630,9 +565,9 @@ class TestCharm(unittest.TestCase):
         event = Mock()
         event.certificate = certificate
         csr = b"whatever csr content"
-        patch_generate_csr.return_value = csr
+        self.mock_generate_csr.return_value = csr
         self.harness.set_can_connect(container="nrf", val=True)
 
         self.harness.charm._on_certificate_expiring(event=event)
 
-        patch_request_certificate_creation.assert_called_with(certificate_signing_request=csr)
+        self.mock_request_certificate_creation.assert_called_with(certificate_signing_request=csr)
