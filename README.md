@@ -20,5 +20,5 @@ juju integrate sdcore-nrf-k8s:certificates self-signed-certificates:certificates
 
 # Image
 
-- **nrf**: `ghcr.io/canonical/sdcore-nrf:1.4.0`
+- **nrf**: `ghcr.io/canonical/sdcore-nrf:1.4.1`
 
