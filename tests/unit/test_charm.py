@@ -180,7 +180,7 @@ class TestCharm(NRFUnitTestFixtures):
         add_storage,
         create_database_relation_and_populate_data,
         certificates_relation_id,
-        webui_relation_id,
+        create_webui_relation_and_set_webui_url,
     ):
         root = self.harness.get_filesystem_root("nrf")
         self.mock_generate_private_key.return_value = TEST_PRIVATE_KEY
@@ -254,7 +254,7 @@ class TestCharm(NRFUnitTestFixtures):
         add_storage,
         create_database_relation_and_populate_data,
         certificates_relation_id,
-        webui_relation_id,
+        create_webui_relation_and_set_webui_url,
     ):
         root = self.harness.get_filesystem_root("nrf")
         self.mock_generate_private_key.return_value = TEST_PRIVATE_KEY
@@ -286,7 +286,7 @@ class TestCharm(NRFUnitTestFixtures):
         add_storage,
         create_database_relation_and_populate_data,
         certificates_relation_id,
-        webui_relation_id,
+        create_webui_relation_and_set_webui_url,
     ):
         root = self.harness.get_filesystem_root("nrf")
         self.mock_generate_private_key.return_value = TEST_PRIVATE_KEY
@@ -336,7 +336,7 @@ class TestCharm(NRFUnitTestFixtures):
         add_storage,
         create_database_relation_and_populate_data,
         certificates_relation_id,
-        webui_relation_id,
+        create_webui_relation_and_set_webui_url,
     ):
         root = self.harness.get_filesystem_root("nrf")
         self.mock_generate_private_key.return_value = TEST_PRIVATE_KEY
@@ -390,7 +390,7 @@ class TestCharm(NRFUnitTestFixtures):
         add_storage,
         create_database_relation_and_populate_data,
         certificates_relation_id,
-        webui_relation_id,
+        create_webui_relation_and_set_webui_url,
     ):
         private_key = "whatever key content"
         self.mock_generate_private_key.return_value = private_key
@@ -408,7 +408,7 @@ class TestCharm(NRFUnitTestFixtures):
         add_storage,
         create_database_relation_and_populate_data,
         certificates_relation_id,
-        webui_relation_id,
+        create_webui_relation_and_set_webui_url,
     ):
         root = self.harness.get_filesystem_root("nrf")
         self.mock_generate_private_key.return_value = TEST_PRIVATE_KEY

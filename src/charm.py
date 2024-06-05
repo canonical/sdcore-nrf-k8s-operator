@@ -160,6 +160,8 @@ class NRFOperatorCharm(CharmBase):
             return False
         if not self._get_database_uri():
             return False
+        if not self._webui_data_is_available:
+            return False
         if not self._container.exists(path=BASE_CONFIG_PATH) or not self._container.exists(
             path=CERTS_DIR_PATH
         ):
