@@ -5,10 +5,14 @@
 """Charmed operator for the SD-Core NRF service for K8s."""
 
 import logging
+from typing import List
 
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires  # type: ignore[import]
 from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.sdcore_nrf_k8s.v0.fiveg_nrf import NRFProvides  # type: ignore[import]
+from charms.sdcore_webui_k8s.v0.sdcore_config import (  # type: ignore[import]
+    SdcoreConfigRequires,
+)
 from charms.tls_certificates_interface.v3.tls_certificates import (  # type: ignore[import]
     CertificateExpiringEvent,
     TLSCertificatesRequiresV3,
@@ -35,19 +39,22 @@ BASE_CONFIG_PATH = "/etc/nrf"
 CONFIG_FILE_NAME = "nrfcfg.yaml"
 DATABASE_NAME = "free5gc"
 NRF_SBI_PORT = 29510
-DATABASE_RELATION_NAME = "database"
-NRF_RELATION_NAME = "fiveg_nrf"
 CERTS_DIR_PATH = "/support/TLS"  # Certificate paths are hardcoded in NRF code
 PRIVATE_KEY_NAME = "nrf.key"
 CSR_NAME = "nrf.csr"
 CERTIFICATE_NAME = "nrf.pem"
 CERTIFICATE_COMMON_NAME = "nrf.sdcore"
+DATABASE_RELATION_NAME = "database"
+NRF_RELATION_NAME = "fiveg_nrf"
+SDCORE_CONFIG_RELATION_NAME = "sdcore_config"
+TLS_RELATION_NAME = "certificates"
 LOGGING_RELATION_NAME = "logging"
 
 
 def _render_config(
     database_name: str,
     database_url: str,
+    webui_url: str,
     nrf_host: str,
     nrf_sbi_port: int,
     scheme: str,
@@ -57,6 +64,7 @@ def _render_config(
     Args:
         database_name: Name of the database
         database_url: URL of the database
+        webui_url (str): URL of the Webui.
         nrf_host: Hostname or IP of the NRF service
         nrf_sbi_port: Port of the NRF service
         scheme: SBI interface scheme ("http" or "https")
@@ -69,6 +77,7 @@ def _render_config(
     content = template.render(
         database_name=database_name,
         database_url=database_url,
+        webui_url=webui_url,
         nrf_sbi_port=nrf_sbi_port,
         nrf_ip=nrf_host,
         scheme=scheme,
@@ -91,7 +100,8 @@ class NRFOperatorCharm(CharmBase):
             self, relation_name=DATABASE_RELATION_NAME, database_name=DATABASE_NAME
         )
         self.nrf_provider = NRFProvides(self, NRF_RELATION_NAME)
-        self._certificates = TLSCertificatesRequiresV3(self, "certificates")
+        self._webui = SdcoreConfigRequires(charm=self, relation_name=SDCORE_CONFIG_RELATION_NAME)
+        self._certificates = TLSCertificatesRequiresV3(self, TLS_RELATION_NAME)
         self._logging = LogForwarder(charm=self, relation_name=LOGGING_RELATION_NAME)
         self.unit.set_ports(NRF_SBI_PORT)
         self.framework.observe(self.on.database_relation_joined, self._configure_nrf)
@@ -100,6 +110,8 @@ class NRFOperatorCharm(CharmBase):
         self.framework.observe(
             self.on.fiveg_nrf_relation_joined, self._on_fiveg_nrf_relation_joined
         )
+        self.framework.observe(self.on.sdcore_config_relation_joined, self._configure_nrf)
+        self.framework.observe(self._webui.on.webui_url_available, self._configure_nrf)
         self.framework.observe(self.on.certificates_relation_joined, self._configure_nrf)
         self.framework.observe(self._certificates.on.certificate_available, self._configure_nrf)
         self.framework.observe(
@@ -109,13 +121,41 @@ class NRFOperatorCharm(CharmBase):
             self._certificates.on.certificate_expiring, self._on_certificate_expiring
         )
 
+    def _configure_nrf(self, _: EventBase) -> None:
+        """Handle Juju events.
+
+        This event handler is called for every event that affects the charm state
+        (ex. configuration files, relation data). This method performs a couple of checks
+        to make sure that the workload is ready to be started. Then, it generates a configuration
+        for the NRF workload, runs the Pebble services and exposes service information
+        the requirers.
+        """
+        if not self.ready_to_configure():
+            logger.info("The preconditions for the configuration are not met yet.")
+            return
+        if not self._private_key_is_stored():
+            self._generate_private_key()
+        if not self._csr_is_stored():
+            self._request_new_certificate()
+        provider_certificate = self._get_current_provider_certificate()
+        if not provider_certificate:
+            return
+        if certificate_update_required := self._is_certificate_update_required(
+                provider_certificate
+        ):
+            self._store_certificate(certificate=provider_certificate)
+        desired_config_file = self._generate_nrf_config_file()
+        if config_update_required := self._is_config_update_required(desired_config_file):
+            self._push_config_file(content=desired_config_file)
+        self._configure_workload(restart=(config_update_required or certificate_update_required))
+        self._publish_nrf_info_for_all_requirers()
+
     def ready_to_configure(self) -> bool:
         """Return whether all preconditions are met to proceed with configuration."""
         if not self._container.can_connect():
             return False
-        for relation in [DATABASE_RELATION_NAME, "certificates"]:
-            if not self._relation_created(relation):
-                return False
+        if self._missing_relations():
+            return False
         if not self._database_is_available():
             return False
         if not self._get_database_uri():
@@ -145,11 +185,12 @@ class NRFOperatorCharm(CharmBase):
             event.add_status(WaitingStatus("Waiting for container to be ready"))
             logger.info("Waiting for container to be ready")
             return
-        for relation in [DATABASE_RELATION_NAME, "certificates"]:
-            if not self._relation_created(relation):
-                event.add_status(BlockedStatus(f"Waiting for {relation} relation to be created"))
-                logger.info("Waiting for %s relation to be created", relation)
-                return
+        if missing_relations := self._missing_relations():
+            event.add_status(
+                BlockedStatus(f"Waiting for {', '.join(missing_relations)} relation(s)")
+            )
+            logger.info("Waiting for %s  relation", ', '.join(missing_relations))
+            return
         if not self._database_is_available():
             event.add_status(WaitingStatus("Waiting for the database to be available"))
             logger.info("Waiting for the database to be available")
@@ -157,6 +198,10 @@ class NRFOperatorCharm(CharmBase):
         if not self._get_database_uri():
             event.add_status(WaitingStatus("Waiting for database URI"))
             logger.info("Waiting for database URI")
+            return
+        if not self._webui_data_is_available:
+            event.add_status(WaitingStatus("Waiting for Webui data to be available"))
+            logger.info("Waiting for Webui data to be available")
             return
         if not self._container.exists(path=BASE_CONFIG_PATH) or not self._container.exists(
             path=CERTS_DIR_PATH
@@ -173,32 +218,6 @@ class NRFOperatorCharm(CharmBase):
             logger.info("Waiting for NRF service to start")
             return
         event.add_status(ActiveStatus())
-
-    def _configure_nrf(self, event: EventBase) -> None:
-        """Add pebble layer and manages Juju unit status.
-
-        Args:
-            event: Juju event
-        """
-        if not self.ready_to_configure():
-            logger.info("The preconditions for the configuration are not met yet.")
-            return
-        if not self._private_key_is_stored():
-            self._generate_private_key()
-        if not self._csr_is_stored():
-            self._request_new_certificate()
-        provider_certificate = self._get_current_provider_certificate()
-        if not provider_certificate:
-            return
-        if certificate_update_required := self._is_certificate_update_required(
-            provider_certificate
-        ):
-            self._store_certificate(certificate=provider_certificate)
-        desired_config_file = self._generate_nrf_config_file()
-        if config_update_required := self._is_config_update_required(desired_config_file):
-            self._push_config_file(content=desired_config_file)
-        self._configure_workload(restart=(config_update_required or certificate_update_required))
-        self._publish_nrf_info_for_all_requirers()
 
     def _on_certificates_relation_broken(self, event: RelationBrokenEvent) -> None:
         """Delete TLS related artifacts and reconfigures workload."""
@@ -339,6 +358,7 @@ class NRFOperatorCharm(CharmBase):
             database_url=self._database_info()["uris"].split(",")[0],
             nrf_host=self.model.app.name,
             database_name=DATABASE_NAME,
+            webui_url=self._webui.webui_url,
             nrf_sbi_port=NRF_SBI_PORT,
             scheme="https",
         )
@@ -414,6 +434,13 @@ class NRFOperatorCharm(CharmBase):
         nrf_url = self._get_nrf_url()
         self.nrf_provider.set_nrf_information_in_all_relations(nrf_url)
 
+    def _missing_relations(self) -> List[str]:
+        missing_relations = []
+        for relation in [DATABASE_RELATION_NAME, SDCORE_CONFIG_RELATION_NAME, TLS_RELATION_NAME]:
+            if not self._relation_created(relation):
+                missing_relations.append(relation)
+        return missing_relations
+
     def _relation_created(self, relation_name: str) -> bool:
         """Return whether a given Juju relation was created.
 
@@ -466,6 +493,10 @@ class NRFOperatorCharm(CharmBase):
             return ""
 
     @property
+    def _webui_data_is_available(self) -> bool:
+        return bool(self._webui.webui_url)
+
+    @property
     def _pebble_layer(self) -> Layer:
         """Return pebble layer for the charm.
 
@@ -480,7 +511,7 @@ class NRFOperatorCharm(CharmBase):
                     "nrf": {
                         "override": "replace",
                         "startup": "enabled",
-                        "command": f"/bin/nrf --nrfcfg {BASE_CONFIG_PATH}/{CONFIG_FILE_NAME}",  # noqa: E501
+                        "command": f"/bin/nrf --nrfcfg {BASE_CONFIG_PATH}/{CONFIG_FILE_NAME}",
                         "environment": self._environment_variables,
                     },
                 },

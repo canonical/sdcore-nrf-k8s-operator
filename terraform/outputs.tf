@@ -6,6 +6,8 @@ output "app_name" {
   value       = juju_application.sdcore-nrf-k8s.name
 }
 
+# Required integration endpoints
+
 output "database_endpoint" {
   description = "Name of the endpoint to integrate with MongoDB using mongodb_client interface."
   value       = "database"
@@ -16,12 +18,19 @@ output "certificates_endpoint" {
   value       = "certificates"
 }
 
-output "fiveg_nrf_endpoint" {
-  description = "Name of the endpoint to provide fiveg_nrf interface."
-  value       = "fiveg_nrf"
+output "sdcore_config_endpoint" {
+  description = "Name of the endpoint used to integrate with the Webui."
+  value       = "sdcore_config"
 }
 
 output "logging_endpoint" {
   description = "Name of the endpoint used to integrate with the Logging provider."
   value       = "logging"
+}
+
+# Provided integration endpoints
+
+output "fiveg_nrf_endpoint" {
+  description = "Name of the endpoint to provide fiveg_nrf interface."
+  value       = "fiveg_nrf"
 }

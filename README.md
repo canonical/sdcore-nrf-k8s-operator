@@ -8,10 +8,14 @@ Charmed Operator for the SD-Core Network Repository Function (NRF) for K8s.
 ```bash
 juju deploy sdcore-nrf-k8s --channel=1.5/edge
 juju deploy mongodb-k8s --trust --channel=6/beta
+juju deploy sdcore-webui-k8s --channel=1.5/edge
 juju deploy self-signed-certificates
 
+juju integrate sdcore-webui-k8s:common_database mongodb-k8s:database
+juju integrate sdcore-webui-k8s:auth_database mongodb-k8s:database
 juju integrate sdcore-nrf-k8s:database mongodb-k8s
-juju integrate self-signed-certificates:certificates sdcore-nrf-k8s:certificates
+juju integrate sdcore-nrf-k8s:sdcore_config sdcore-webui-k8s:sdcore-config
+juju integrate sdcore-nrf-k8s:certificates self-signed-certificates:certificates
 ```
 
 # Image

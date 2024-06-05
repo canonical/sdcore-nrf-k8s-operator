@@ -37,6 +37,8 @@ requires:
     interface: mongodb_client
   certificates:
     interface: tls-certificates
+  sdcore_config:
+    interface: sdcore_config
   logging:
     interface: loki_push_api
 
