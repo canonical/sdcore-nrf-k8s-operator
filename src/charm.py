@@ -9,6 +9,9 @@ from typing import List
 
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires  # type: ignore[import]
 from charms.loki_k8s.v1.loki_push_api import LogForwarder
+from charms.prometheus_k8s.v0.prometheus_scrape import (  # type: ignore[import]
+    MetricsEndpointProvider,
+)
 from charms.sdcore_nrf_k8s.v0.fiveg_nrf import NRFProvides  # type: ignore[import]
 from charms.sdcore_webui_k8s.v0.sdcore_config import (  # type: ignore[import]
     SdcoreConfigRequires,
@@ -35,6 +38,7 @@ from ops.pebble import Layer
 
 logger = logging.getLogger(__name__)
 
+PROMETHEUS_PORT = 8080
 BASE_CONFIG_PATH = "/etc/nrf"
 CONFIG_FILE_NAME = "nrfcfg.yaml"
 DATABASE_NAME = "free5gc"
@@ -103,7 +107,15 @@ class NRFOperatorCharm(CharmBase):
         self._webui = SdcoreConfigRequires(charm=self, relation_name=SDCORE_CONFIG_RELATION_NAME)
         self._certificates = TLSCertificatesRequiresV3(self, TLS_RELATION_NAME)
         self._logging = LogForwarder(charm=self, relation_name=LOGGING_RELATION_NAME)
-        self.unit.set_ports(NRF_SBI_PORT)
+        self._nrf_metrics_endpoint = MetricsEndpointProvider(
+            self,
+            jobs=[
+                {
+                    "static_configs": [{"targets": [f"*:{PROMETHEUS_PORT}"]}],
+                }
+            ],
+        )
+        self.unit.set_ports(PROMETHEUS_PORT, NRF_SBI_PORT)
         self.framework.observe(self.on.database_relation_joined, self._configure_nrf)
         self.framework.observe(self.on.nrf_pebble_ready, self._configure_nrf)
         self.framework.observe(self._database.on.database_created, self._configure_nrf)

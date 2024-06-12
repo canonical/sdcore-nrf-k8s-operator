@@ -34,3 +34,8 @@ output "fiveg_nrf_endpoint" {
   description = "Name of the endpoint to provide fiveg_nrf interface."
   value       = "fiveg_nrf"
 }
+
+output "metrics_endpoint" {
+  description = "Exposes the Prometheus metrics endpoint providing telemetry about the NRF instance."
+  value       = "metrics-endpoint"
+}
