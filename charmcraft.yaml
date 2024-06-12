@@ -45,6 +45,8 @@ requires:
 provides:
   fiveg_nrf:
     interface: fiveg_nrf
+  metrics-endpoint:
+    interface: prometheus_scrape
 
 assumes:
   - k8s-api
