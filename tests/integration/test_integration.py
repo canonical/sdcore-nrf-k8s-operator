@@ -73,7 +73,11 @@ async def test_given_charm_is_deployed_when_relate_to_mongo_webui_and_certificat
     )
     await ops_test.model.integrate(
         relation1=f"{APP_NAME}:logging",
-        relation2=f"{GRAFANA_AGENT_CHARM_NAME}",
+        relation2=f"{GRAFANA_AGENT_CHARM_NAME}:logging-provider",
+    )
+    await ops_test.model.integrate(
+        relation1=f"{APP_NAME}:metrics-endpoint",
+        relation2=f"{GRAFANA_AGENT_CHARM_NAME}:metrics-endpoint",
     )
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=TIMEOUT)
 
