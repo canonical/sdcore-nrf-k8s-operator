@@ -1,6 +1,7 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import os
 from unittest.mock import Mock
 
 import pytest
@@ -84,7 +85,9 @@ class TestCharm(NRFUnitTestFixtures):
         self.mock_resource_created.return_value = False
         self.harness.container_pebble_ready(container_name="nrf")
         self.harness.evaluate_status()
-        assert self.harness.model.unit.status == WaitingStatus("Waiting for the database to be available")  # noqa: E501
+        assert self.harness.model.unit.status == WaitingStatus(
+            "Waiting for the database to be available"
+        )
 
     def test_given_database_information_not_available_when_pebble_ready_then_status_is_waiting(
         self, certificates_relation_id, database_relation_id, webui_relation_id
@@ -114,7 +117,9 @@ class TestCharm(NRFUnitTestFixtures):
     ):
         self.harness.container_pebble_ready(container_name="nrf")
         self.harness.evaluate_status()
-        assert self.harness.model.unit.status == WaitingStatus("Waiting for storage to be attached")  # noqa: E501
+        assert self.harness.model.unit.status == WaitingStatus(
+            "Waiting for storage to be attached"
+        )
 
     def test_given_certificates_not_stored_when_pebble_ready_then_status_is_waiting(
         self,
@@ -128,7 +133,9 @@ class TestCharm(NRFUnitTestFixtures):
         self.harness.set_can_connect(container="nrf", val=True)
         self.harness.container_pebble_ready("nrf")
         self.harness.evaluate_status()
-        assert self.harness.model.unit.status == WaitingStatus("Waiting for certificates to be stored")  # noqa: E501
+        assert self.harness.model.unit.status == WaitingStatus(
+            "Waiting for certificates to be stored"
+        )
 
     def test_given_database_info_and_storage_attached_and_certs_stored_when_pebble_ready_then_config_file_is_rendered_and_pushed(  # noqa: E501
         self,
@@ -479,3 +486,23 @@ class TestCharm(NRFUnitTestFixtures):
         self.mock_request_certificate_creation.assert_called_with(
             certificate_signing_request=TEST_CSR
         )
+
+    def test_given_no_workload_version_file_when_container_can_connect_then_workload_version_not_set(  # noqa: E501
+        self,
+    ):
+        self.harness.container_pebble_ready(container_name="nrf")
+        self.harness.evaluate_status()
+        version = self.harness.get_workload_version()
+        assert version == ""
+
+    def test_given_workload_version_file_when_container_can_connect_then_workload_version_set(
+        self,
+    ):
+        expected_version = "1.2.3"
+        root = self.harness.get_filesystem_root("nrf")
+        os.mkdir(f"{root}/etc")
+        (root / "etc/workload-version").write_text(expected_version)
+        self.harness.container_pebble_ready(container_name="nrf")
+        self.harness.evaluate_status()
+        version = self.harness.get_workload_version()
+        assert version == expected_version
