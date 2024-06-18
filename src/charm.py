@@ -184,6 +184,8 @@ class NRFOperatorCharm(CharmBase):
     def _on_collect_unit_status(self, event: CollectStatusEvent):  # noqa C901
         """Check the unit status and set to Unit when CollectStatusEvent is fired.
 
+        Sets the unit workload status if present in workload.
+
         Args:
             event: CollectStatusEvent
         """
