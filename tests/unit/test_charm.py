@@ -42,7 +42,7 @@ class TestCharm(NRFUnitTestFixtures):
         self.harness.evaluate_status()
 
         assert self.harness.model.unit.status == BlockedStatus(
-            "Waiting for database, sdcore-config, certificates relation(s)"
+            "Waiting for database, sdcore_config, certificates relation(s)"
         )
 
     def test_given_certificates_and_nms_relations_not_created_when_pebble_ready_then_status_is_blocked(  # noqa: E501
@@ -52,7 +52,7 @@ class TestCharm(NRFUnitTestFixtures):
         self.harness.evaluate_status()
 
         assert self.harness.model.unit.status == BlockedStatus(
-            "Waiting for sdcore-config, certificates relation(s)"
+            "Waiting for sdcore_config, certificates relation(s)"
         )
 
     def test_given_nms_relation_not_created_when_pebble_ready_then_status_is_blocked(
@@ -62,7 +62,7 @@ class TestCharm(NRFUnitTestFixtures):
         self.harness.evaluate_status()
 
         assert self.harness.model.unit.status == BlockedStatus(
-            "Waiting for sdcore-config relation(s)"
+            "Waiting for sdcore_config relation(s)"
         )
 
     def test_given_nrf_charm_in_active_state_when_database_relation_breaks_then_status_is_blocked(

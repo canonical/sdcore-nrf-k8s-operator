@@ -14,7 +14,7 @@ DB_RELATION_NAME = "database"
 TEST_TLS_APPLICATION_NAME = "whatever-tls"
 TLS_RELATION_NAME = "certificates"
 TEST_NMS_APPLICATION_NAME = "whatever-nms"
-NMS_RELATION_NAME = "sdcore-config"
+NMS_RELATION_NAME = "sdcore_config"
 TEST_WEBUI_URL = "some-webui:7890"
 
 
