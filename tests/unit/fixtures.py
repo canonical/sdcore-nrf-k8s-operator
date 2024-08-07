@@ -29,7 +29,7 @@ class NRFUnitTestFixtures:
     )
     patcher_resource_created = patch(
         "charms.data_platform_libs.v0.data_interfaces.DatabaseRequires.is_resource_created"
-    )  # noqa: E501
+    )
 
     @pytest.fixture()
     def setup(self):
