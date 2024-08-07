@@ -10,7 +10,7 @@ from tests.unit.charms.sdcore_nrf.v0.dummy_provider_charm.src.dummy_provider_cha
     DummyFiveGNRFProviderCharm,
 )
 
-DUMMY_PROVIDER_CHARM = "tests.unit.charms.sdcore_nrf.v0.dummy_provider_charm.src.dummy_provider_charm.DummyFiveGNRFProviderCharm"   # noqa: E501
+DUMMY_PROVIDER_CHARM = "tests.unit.charms.sdcore_nrf.v0.dummy_provider_charm.src.dummy_provider_charm.DummyFiveGNRFProviderCharm"  # noqa: E501
 RELATION_NAME = "fiveg_nrf"
 REMOTE_APP_NAME = "dummy-nrf-requirer"
 NRF_URL = "https://nrf.example.com"
@@ -27,7 +27,7 @@ class TestFiveGNRFProvider:
         patch.stopall()
 
     @pytest.fixture(autouse=True)
-    def harness(self, setUp, request):
+    def setup_harness(self, setUp, request):
         self.harness = testing.Harness(DummyFiveGNRFProviderCharm)
         self.harness.begin()
         self.harness.set_leader(is_leader=True)
@@ -102,8 +102,6 @@ class TestFiveGNRFProvider:
         self.harness.set_leader(is_leader=True)
         remote_app_name_1 = REMOTE_APP_NAME
         remote_app_name_2 = f"second-{REMOTE_APP_NAME}"
-        expected_nrf_url = NRF_URL
-        self.patcher_nrf_url.return_value = NRF_URL
 
         relation_id_1 = self._create_relation(remote_app_name=remote_app_name_1)
         self.harness.get_relation_data(
@@ -113,7 +111,7 @@ class TestFiveGNRFProvider:
         relation_data_2 = self.harness.get_relation_data(
             relation_id=relation_id_2, app_or_unit=self.harness.charm.app.name
         )
-        assert relation_data_2["url"] == expected_nrf_url
+        assert relation_data_2["url"] == NRF_URL
 
     def test_given_unit_is_leader_and_multiple_fiveg_nrf_relations_when_set_nrf_information_in_all_relations_then_all_relations_are_updated(  # noqa: E501
         self,

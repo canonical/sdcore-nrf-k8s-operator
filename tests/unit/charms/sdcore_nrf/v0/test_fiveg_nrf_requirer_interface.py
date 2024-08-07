@@ -32,7 +32,7 @@ class TestFiveGNRFRequirer:
         patch.stopall()
 
     @pytest.fixture(autouse=True)
-    def harness(self, setUp, request):
+    def setup_harness(self, setUp, request):
         self.harness = testing.Harness(DummyFiveGNRFRequirerCharm)
         self.harness.begin()
         yield self.harness
@@ -50,7 +50,7 @@ class TestFiveGNRFRequirer:
         return relation_id
 
     def test_given_nrf_information_in_relation_data_when_relation_changed_then_nrf_available_event_emitted(  # noqa: E501
-        self
+        self,
     ):
         relation_id = self._create_relation(remote_app_name=REMOTE_APP_NAME)
 
@@ -62,7 +62,7 @@ class TestFiveGNRFRequirer:
         )
 
     def test_given_nrf_information_not_in_relation_data_when_relation_changed_then_nrf_available_event_not_emitted(  # noqa: E501
-        self
+        self,
     ):
         relation_id = self._create_relation(remote_app_name=REMOTE_APP_NAME)
         relation_data = {}
@@ -72,9 +72,8 @@ class TestFiveGNRFRequirer:
         )
         self.mock_fiveg_nrf_available.assert_not_called()
 
-
     def test_given_invalid_nrf_information_in_relation_data_when_relation_changed_then_nrf_available_event_not_emitted(  # noqa: E501
-        self
+        self,
     ):
         relation_id = self._create_relation(remote_app_name=REMOTE_APP_NAME)
         relation_data = {"pizza": "steak"}
@@ -136,9 +135,7 @@ class TestFiveGNRFRequirer:
         assert nrf_url is None
         assert "Invalid relation data: {'pizza': 'steak'}" in caplog.messages
 
-    def test_given_nrf_relation_created_when_relation_broken_then_nrf_broken_event_emitted(
-        self
-    ):
+    def test_given_nrf_relation_created_when_relation_broken_then_nrf_broken_event_emitted(self):
         relation_id = self._create_relation(remote_app_name=REMOTE_APP_NAME)
         self.harness.remove_relation(relation_id)
         calls = [call.emit()]

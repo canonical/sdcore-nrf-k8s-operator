@@ -6,8 +6,9 @@ from unittest.mock import Mock
 
 import pytest
 from charms.tls_certificates_interface.v3.tls_certificates import ProviderCertificate
-from fixtures import NRFUnitTestFixtures
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
+
+from tests.unit.fixtures import NRFUnitTestFixtures
 
 CONFIG_FILE_NAME = "nrfcfg.yaml"
 TEST_PRIVATE_KEY = b"whatever key content"

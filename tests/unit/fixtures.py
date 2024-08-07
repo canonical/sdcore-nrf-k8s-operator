@@ -27,14 +27,20 @@ class NRFUnitTestFixtures:
     patcher_request_certificate_creation = patch(
         "charms.tls_certificates_interface.v3.tls_certificates.TLSCertificatesRequiresV3.request_certificate_creation",  # noqa: E501
     )
-    patcher_resource_created = patch("charms.data_platform_libs.v0.data_interfaces.DatabaseRequires.is_resource_created")  # noqa: E501
+    patcher_resource_created = patch(
+        "charms.data_platform_libs.v0.data_interfaces.DatabaseRequires.is_resource_created"
+    )
 
     @pytest.fixture()
     def setup(self):
         self.mock_generate_csr = NRFUnitTestFixtures.patcher_generate_crs.start()
         self.mock_generate_private_key = NRFUnitTestFixtures.patcher_generate_private_key.start()
-        self.mock_get_assigned_certificates = NRFUnitTestFixtures.patcher_get_assigned_certificates.start()  # noqa: E501
-        self.mock_request_certificate_creation = NRFUnitTestFixtures.patcher_request_certificate_creation.start()  # noqa: E501
+        self.mock_get_assigned_certificates = (
+            NRFUnitTestFixtures.patcher_get_assigned_certificates.start()
+        )  # noqa: E501
+        self.mock_request_certificate_creation = (
+            NRFUnitTestFixtures.patcher_request_certificate_creation.start()
+        )  # noqa: E501
         self.mock_resource_created = NRFUnitTestFixtures.patcher_resource_created.start()
 
     @staticmethod
