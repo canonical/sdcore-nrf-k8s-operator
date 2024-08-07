@@ -46,7 +46,7 @@ class TestCharm(NRFUnitTestFixtures):
             "Waiting for database, sdcore_config, certificates relation(s)"
         )
 
-    def test_given_certificates_and_webui_relations_not_created_when_pebble_ready_then_status_is_blocked(  # noqa: E501
+    def test_given_certificates_and_nms_relations_not_created_when_pebble_ready_then_status_is_blocked(  # noqa: E501
         self, database_relation_id
     ):
         self.harness.container_pebble_ready(container_name="nrf")
@@ -56,7 +56,7 @@ class TestCharm(NRFUnitTestFixtures):
             "Waiting for sdcore_config, certificates relation(s)"
         )
 
-    def test_given_webui_relations_not_created_when_pebble_ready_then_status_is_blocked(
+    def test_given_nms_relation_not_created_when_pebble_ready_then_status_is_blocked(
         self, database_relation_id, certificates_relation_id
     ):
         self.harness.container_pebble_ready(container_name="nrf")
@@ -67,7 +67,7 @@ class TestCharm(NRFUnitTestFixtures):
         )
 
     def test_given_nrf_charm_in_active_state_when_database_relation_breaks_then_status_is_blocked(
-        self, add_storage, certificates_relation_id, database_relation_id, webui_relation_id
+        self, add_storage, certificates_relation_id, database_relation_id, nms_relation_id
     ):
         self.mock_generate_private_key.return_value = TEST_PRIVATE_KEY
         self.mock_generate_csr.return_value = TEST_CSR
@@ -81,7 +81,7 @@ class TestCharm(NRFUnitTestFixtures):
         assert self.harness.model.unit.status == BlockedStatus("Waiting for database relation(s)")
 
     def test_given_database_not_available_when_pebble_ready_then_status_is_waiting(
-        self, certificates_relation_id, database_relation_id, webui_relation_id
+        self, certificates_relation_id, database_relation_id, nms_relation_id
     ):
         self.mock_resource_created.return_value = False
         self.harness.container_pebble_ready(container_name="nrf")
@@ -91,7 +91,7 @@ class TestCharm(NRFUnitTestFixtures):
         )
 
     def test_given_database_information_not_available_when_pebble_ready_then_status_is_waiting(
-        self, certificates_relation_id, database_relation_id, webui_relation_id
+        self, certificates_relation_id, database_relation_id, nms_relation_id
     ):
         self.mock_resource_created.return_value = True
         self.harness.container_pebble_ready(container_name="nrf")
@@ -102,7 +102,7 @@ class TestCharm(NRFUnitTestFixtures):
         self,
         certificates_relation_id,
         create_database_relation_and_populate_data,
-        webui_relation_id,
+        nms_relation_id,
     ):
         self.harness.container_pebble_ready(container_name="nrf")
         self.harness.evaluate_status()
@@ -114,7 +114,7 @@ class TestCharm(NRFUnitTestFixtures):
         self,
         certificates_relation_id,
         create_database_relation_and_populate_data,
-        create_webui_relation_and_set_webui_url,
+        create_nms_relation_and_set_webui_url,
     ):
         self.harness.container_pebble_ready(container_name="nrf")
         self.harness.evaluate_status()
@@ -127,7 +127,7 @@ class TestCharm(NRFUnitTestFixtures):
         add_storage,
         create_database_relation_and_populate_data,
         certificates_relation_id,
-        create_webui_relation_and_set_webui_url,
+        create_nms_relation_and_set_webui_url,
     ):
         self.mock_generate_private_key.return_value = TEST_PRIVATE_KEY
         self.mock_generate_csr.return_value = TEST_CSR
@@ -143,7 +143,7 @@ class TestCharm(NRFUnitTestFixtures):
         add_storage,
         create_database_relation_and_populate_data,
         certificates_relation_id,
-        create_webui_relation_and_set_webui_url,
+        create_nms_relation_and_set_webui_url,
     ):
         root = self.harness.get_filesystem_root("nrf")
         self.mock_generate_private_key.return_value = TEST_PRIVATE_KEY
@@ -169,7 +169,7 @@ class TestCharm(NRFUnitTestFixtures):
         add_storage,
         create_database_relation_and_populate_data,
         certificates_relation_id,
-        webui_relation_id,
+        nms_relation_id,
     ):
         self.mock_generate_private_key.return_value = TEST_PRIVATE_KEY
         self.mock_generate_csr.return_value = TEST_CSR
@@ -188,7 +188,7 @@ class TestCharm(NRFUnitTestFixtures):
         add_storage,
         create_database_relation_and_populate_data,
         certificates_relation_id,
-        create_webui_relation_and_set_webui_url,
+        create_nms_relation_and_set_webui_url,
     ):
         root = self.harness.get_filesystem_root("nrf")
         self.mock_generate_private_key.return_value = TEST_PRIVATE_KEY
@@ -234,7 +234,7 @@ class TestCharm(NRFUnitTestFixtures):
         add_storage,
         create_database_relation_and_populate_data,
         certificates_relation_id,
-        create_webui_relation_and_set_webui_url,
+        create_nms_relation_and_set_webui_url,
     ):
         root = self.harness.get_filesystem_root("nrf")
         self.mock_generate_private_key.return_value = TEST_PRIVATE_KEY
@@ -262,7 +262,7 @@ class TestCharm(NRFUnitTestFixtures):
         add_storage,
         create_database_relation_and_populate_data,
         certificates_relation_id,
-        create_webui_relation_and_set_webui_url,
+        create_nms_relation_and_set_webui_url,
     ):
         root = self.harness.get_filesystem_root("nrf")
         self.mock_generate_private_key.return_value = TEST_PRIVATE_KEY
@@ -294,7 +294,7 @@ class TestCharm(NRFUnitTestFixtures):
         add_storage,
         create_database_relation_and_populate_data,
         certificates_relation_id,
-        create_webui_relation_and_set_webui_url,
+        create_nms_relation_and_set_webui_url,
     ):
         root = self.harness.get_filesystem_root("nrf")
         self.mock_generate_private_key.return_value = TEST_PRIVATE_KEY
@@ -344,7 +344,7 @@ class TestCharm(NRFUnitTestFixtures):
         add_storage,
         create_database_relation_and_populate_data,
         certificates_relation_id,
-        create_webui_relation_and_set_webui_url,
+        create_nms_relation_and_set_webui_url,
     ):
         root = self.harness.get_filesystem_root("nrf")
         self.mock_generate_private_key.return_value = TEST_PRIVATE_KEY
@@ -378,7 +378,7 @@ class TestCharm(NRFUnitTestFixtures):
         add_storage,
         create_database_relation_and_populate_data,
         certificates_relation_id,
-        webui_relation_id,
+        nms_relation_id,
     ):
         private_key = "whatever key content"
         csr = "Whatever TEST_CSR content"
@@ -398,7 +398,7 @@ class TestCharm(NRFUnitTestFixtures):
         add_storage,
         create_database_relation_and_populate_data,
         certificates_relation_id,
-        create_webui_relation_and_set_webui_url,
+        create_nms_relation_and_set_webui_url,
     ):
         private_key = "whatever key content"
         self.mock_generate_private_key.return_value = private_key
@@ -416,7 +416,7 @@ class TestCharm(NRFUnitTestFixtures):
         add_storage,
         create_database_relation_and_populate_data,
         certificates_relation_id,
-        create_webui_relation_and_set_webui_url,
+        create_nms_relation_and_set_webui_url,
     ):
         root = self.harness.get_filesystem_root("nrf")
         self.mock_generate_private_key.return_value = TEST_PRIVATE_KEY
@@ -438,7 +438,7 @@ class TestCharm(NRFUnitTestFixtures):
         self,
         add_storage,
         create_database_relation_and_populate_data,
-        webui_relation_id,
+        nms_relation_id,
         certificates_relation_id,
     ):
         root = self.harness.get_filesystem_root("nrf")

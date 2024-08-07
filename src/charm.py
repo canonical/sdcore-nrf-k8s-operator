@@ -2,7 +2,7 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-"""Charmed operator for the SD-Core NRF service for K8s."""
+"""Charmed operator for the Aether SD-Core NRF service for K8s."""
 
 import logging
 from typing import List
@@ -12,10 +12,10 @@ from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.prometheus_k8s.v0.prometheus_scrape import (
     MetricsEndpointProvider,
 )
-from charms.sdcore_nrf_k8s.v0.fiveg_nrf import NRFProvides
-from charms.sdcore_webui_k8s.v0.sdcore_config import (
+from charms.sdcore_nms_k8s.v0.sdcore_config import (
     SdcoreConfigRequires,
 )
+from charms.sdcore_nrf_k8s.v0.fiveg_nrf import NRFProvides
 from charms.tls_certificates_interface.v3.tls_certificates import (
     CertificateExpiringEvent,
     TLSCertificatesRequiresV3,

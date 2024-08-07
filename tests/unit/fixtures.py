@@ -13,8 +13,8 @@ TEST_DB_APPLICATION_NAME = "whatever-db"
 DB_RELATION_NAME = "database"
 TEST_TLS_APPLICATION_NAME = "whatever-tls"
 TLS_RELATION_NAME = "certificates"
-TEST_WEBUI_APPLICATION_NAME = "whatever-webui"
-WEBUI_RELATION_NAME = "sdcore_config"
+TEST_NMS_APPLICATION_NAME = "whatever-nms"
+NMS_RELATION_NAME = "sdcore_config"
 TEST_WEBUI_URL = "some-webui:7890"
 
 
@@ -85,21 +85,21 @@ class NRFUnitTestFixtures:
         )
 
     @pytest.fixture()
-    def create_webui_relation_and_set_webui_url(self, webui_relation_id):
+    def create_nms_relation_and_set_webui_url(self, nms_relation_id):
         self.harness.add_relation_unit(
-            relation_id=webui_relation_id, remote_unit_name=f"{TEST_WEBUI_APPLICATION_NAME}/0"
+            relation_id=nms_relation_id, remote_unit_name=f"{TEST_NMS_APPLICATION_NAME}/0"
         )
         self.harness.update_relation_data(
-            relation_id=webui_relation_id,
-            app_or_unit=TEST_WEBUI_APPLICATION_NAME,
+            relation_id=nms_relation_id,
+            app_or_unit=TEST_NMS_APPLICATION_NAME,
             key_values={"webui_url": TEST_WEBUI_URL},
         )
 
     @pytest.fixture()
-    def webui_relation_id(self) -> Generator[int, None, None]:
+    def nms_relation_id(self) -> Generator[int, None, None]:
         yield self.harness.add_relation(
-            relation_name=WEBUI_RELATION_NAME,
-            remote_app=TEST_WEBUI_APPLICATION_NAME,
+            relation_name=NMS_RELATION_NAME,
+            remote_app=TEST_NMS_APPLICATION_NAME,
         )
 
     @pytest.fixture()
