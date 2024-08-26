@@ -11,7 +11,7 @@ from tests.unit.fixtures import NRFUnitTestFixtures
 
 
 class TestCharmCertificateRelationBroken(NRFUnitTestFixtures):
-    def test_given_container_when_certificats_relation_broken_then_certificate_deleted(self):
+    def test_given_container_when_certificates_relation_broken_then_certificate_deleted(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             certificates_relation = scenario.Relation(
                 endpoint="certificates",
