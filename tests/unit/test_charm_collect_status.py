@@ -2,16 +2,13 @@
 # See LICENSE file for licensing details.
 
 
-import datetime
 import tempfile
 
 import scenario
-from charms.tls_certificates_interface.v3.tls_certificates import (
-    ProviderCertificate,
-)
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 from ops.pebble import Layer, ServiceStatus
 
+from tests.unit.certificates_helpers import example_cert_and_key
 from tests.unit.fixtures import NRFUnitTestFixtures
 
 
@@ -264,12 +261,13 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
                 database_relation.relation_id: {"uris": "mongodb://localhost:27017"},
             }
             self.mock_sdcore_config_webui_url.return_value = "https://webui.url"
-            with open(f"{tempdir}/nrf.csr", "w") as f:
-                f.write("whatever csr")
+            self.mock_get_assigned_certificate.return_value = (None, None)
 
             state_out = self.ctx.run("collect_unit_status", state_in)
 
-            assert state_out.unit_status == WaitingStatus("Waiting for certificates to be stored")
+            assert state_out.unit_status == WaitingStatus(
+                "Waiting for certificates to be available"
+            )
 
     def test_given_nrf_service_not_started_when_collect_unit_status_then_status_is_waiting(
         self,
@@ -313,6 +311,10 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
                 database_relation.relation_id: {"uris": "mongodb://localhost:27017"},
             }
             self.mock_sdcore_config_webui_url.return_value = "https://webui.url"
+            provider_certificate, private_key = example_cert_and_key(
+                tls_relation_id=certificates_relation.relation_id
+            )
+            self.mock_get_assigned_certificate.return_value = (provider_certificate, private_key)
 
             state_out = self.ctx.run("collect_unit_status", state_in)
 
@@ -365,20 +367,10 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
             }
             self.mock_sdcore_config_webui_url.return_value = "https://webui.url"
 
-            self.mock_get_assigned_certificates.return_value = [
-                ProviderCertificate(
-                    relation_id=certificates_relation.relation_id,
-                    application_name="nrf",
-                    csr="whatever csr",
-                    certificate="whatever cert",
-                    ca="whatever ca",
-                    chain=["whatever ca", "whatever cert"],
-                    revoked=False,
-                    expiry_time=datetime.datetime.now(),
-                )
-            ]
-            with open(f"{tempdir}/nrf.csr", "w") as f:
-                f.write("whatever csr")
+            provider_certificate, private_key = example_cert_and_key(
+                tls_relation_id=certificates_relation.relation_id
+            )
+            self.mock_get_assigned_certificate.return_value = provider_certificate, private_key
             with open(f"{tempdir}/nrf.pem", "w") as f:
                 f.write("whatever cert")
 
