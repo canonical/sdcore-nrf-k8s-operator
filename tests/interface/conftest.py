@@ -11,14 +11,6 @@ from charm import NRFOperatorCharm
 @pytest.fixture
 def interface_tester(interface_tester: InterfaceTester):
     with tempfile.TemporaryDirectory() as tempdir:
-        certificates_relation = scenario.Relation(
-            endpoint="certificates",
-            interface="tls-certificates",
-        )
-        database_relation = scenario.Relation(
-            endpoint="database",
-            interface="mongodb_client",
-        )
         config_mount = scenario.Mount(
             location="/etc/nrf/",
             src=tempdir,
@@ -43,7 +35,6 @@ def interface_tester(interface_tester: InterfaceTester):
             charm_type=NRFOperatorCharm,
             state_template=scenario.State(
                 leader=True,
-                relations=[certificates_relation, database_relation],
                 containers=[container],
             ),
         )
