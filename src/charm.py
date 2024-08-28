@@ -430,7 +430,8 @@ class NRFOperatorCharm(CharmBase):
         nrf_url = self._get_nrf_url()
         self.nrf_provider.set_nrf_information_in_all_relations(nrf_url)
 
-    def _get_certificate_request(self) -> CertificateRequest:
+    @staticmethod
+    def _get_certificate_request() -> CertificateRequest:
         return CertificateRequest(
             common_name=CERTIFICATE_COMMON_NAME,
             sans_dns=frozenset([CERTIFICATE_COMMON_NAME]),
