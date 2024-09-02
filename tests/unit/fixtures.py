@@ -20,8 +20,8 @@ class NRFUnitTestFixtures:
         "charms.sdcore_nms_k8s.v0.sdcore_config.SdcoreConfigRequires.webui_url",
         new_callable=PropertyMock,
     )
-    patcher_get_assigned_certificates = patch(
-        "charms.tls_certificates_interface.v3.tls_certificates.TLSCertificatesRequiresV3.get_assigned_certificates"
+    patcher_get_assigned_certificate = patch(
+        "charms.tls_certificates_interface.v4.tls_certificates.TLSCertificatesRequiresV4.get_assigned_certificate"
     )
     patcher_set_nrf_information = patch(
         "charms.sdcore_nrf_k8s.v0.fiveg_nrf.NRFProvides.set_nrf_information"
@@ -41,8 +41,8 @@ class NRFUnitTestFixtures:
         self.mock_sdcore_config_webui_url = (
             NRFUnitTestFixtures.patcher_sdcore_config_webui_url.start()
         )
-        self.mock_get_assigned_certificates = (
-            NRFUnitTestFixtures.patcher_get_assigned_certificates.start()
+        self.mock_get_assigned_certificate = (
+            NRFUnitTestFixtures.patcher_get_assigned_certificate.start()
         )
         self.mock_set_nrf_information = NRFUnitTestFixtures.patcher_set_nrf_information.start()
         self.mock_set_nrf_information_in_all_relations = (
