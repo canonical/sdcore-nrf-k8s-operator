@@ -44,7 +44,8 @@ async def build_and_deploy(ops_test):
 
 @pytest.mark.abort_on_fail
 async def test_given_charm_is_built_when_deployed_then_status_is_blocked(
-    ops_test, build_and_deploy,
+    ops_test,
+    build_and_deploy,
 ):
     await _deploy_mongodb(ops_test)
     await _deploy_self_signed_certificates(ops_test)

@@ -4,10 +4,11 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from charm import NRFOperatorCharm
 from charms.tls_certificates_interface.v3.tls_certificates import ProviderCertificate
 from ops import testing
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
+
+from charm import NRFOperatorCharm
 
 DB_APPLICATION_NAME = "mongodb-k8s"
 BASE_CONFIG_PATH = "/etc/nrf"
@@ -570,7 +571,6 @@ class TestCharm(unittest.TestCase):
         patch_generate_csr,
         patch_get_assigned_certificates,
     ):
-
         self.harness.add_storage("config", attach=True)
         self.harness.add_storage("certs", attach=True)
         root = self.harness.get_filesystem_root("nrf")

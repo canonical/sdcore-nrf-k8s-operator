@@ -83,9 +83,9 @@ class TestFiveGNRFRequirer(unittest.TestCase):
             self.harness.update_relation_data(
                 relation_id=relation_id, app_or_unit=self.remote_app_name, key_values=relation_data
             )
-            self.assertIn(
-                f"DEBUG:lib.charms.sdcore_nrf_k8s.v0.fiveg_nrf:Invalid relation data: {relation_data}",  # noqa: E501
-                log.output,
+            assert (
+                f"DEBUG:lib.charms.sdcore_nrf_k8s.v0.fiveg_nrf:Invalid relation data: {relation_data}"  # noqa: E501
+                in log.output
             )
 
     def test_given_nrf_information_in_relation_data_when_get_nrf_url_is_called_then_expected_url_is_returned(  # noqa: E501
@@ -115,9 +115,9 @@ class TestFiveGNRFRequirer(unittest.TestCase):
             )
             nrf_url = self.harness.charm.nrf_requirer.nrf_url
             self.assertIsNone(nrf_url)
-            self.assertIn(
-                f"DEBUG:lib.charms.sdcore_nrf_k8s.v0.fiveg_nrf:Invalid relation data: {relation_data}",  # noqa: E501
-                log.output,
+            assert (
+                f"DEBUG:lib.charms.sdcore_nrf_k8s.v0.fiveg_nrf:Invalid relation data: {relation_data}"  # noqa: E501
+                in log.output
             )
 
     def test_given_nrf_information_in_relation_data_is_not_valid_when_get_nrf_url_then_returns_none_and_error_is_logged(  # noqa: E501
@@ -132,9 +132,9 @@ class TestFiveGNRFRequirer(unittest.TestCase):
             )
             nrf_url = self.harness.charm.nrf_requirer.nrf_url
             self.assertIsNone(nrf_url)
-            self.assertIn(
-                f"DEBUG:lib.charms.sdcore_nrf_k8s.v0.fiveg_nrf:Invalid relation data: {relation_data}",  # noqa: E501
-                log.output,
+            assert (
+                f"DEBUG:lib.charms.sdcore_nrf_k8s.v0.fiveg_nrf:Invalid relation data: {relation_data}"  # noqa: E501
+                in log.output
             )
 
     @patch("lib.charms.sdcore_nrf_k8s.v0.fiveg_nrf.NRFRequirerCharmEvents.nrf_broken")
