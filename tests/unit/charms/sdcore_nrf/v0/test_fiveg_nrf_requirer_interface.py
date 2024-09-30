@@ -59,7 +59,7 @@ class TestFiveGNRFRequirer:
             relations=[nrf_relation],
         )
 
-        self.ctx.run(nrf_relation.changed_event, state_in)
+        self.ctx.run(self.ctx.on.relation_changed(nrf_relation), state_in)
 
         assert len(self.ctx.emitted_events) == 2
         assert isinstance(self.ctx.emitted_events[1], NRFAvailableEvent)
@@ -76,7 +76,7 @@ class TestFiveGNRFRequirer:
             relations=[nrf_relation],
         )
 
-        self.ctx.run(nrf_relation.changed_event, state_in)
+        self.ctx.run(self.ctx.on.relation_changed(nrf_relation), state_in)
 
         assert len(self.ctx.emitted_events) == 1
 
@@ -94,7 +94,7 @@ class TestFiveGNRFRequirer:
             relations=[nrf_relation],
         )
 
-        self.ctx.run(nrf_relation.changed_event, state_in)
+        self.ctx.run(self.ctx.on.relation_changed(nrf_relation), state_in)
 
         assert len(self.ctx.emitted_events) == 1
 
@@ -112,7 +112,7 @@ class TestFiveGNRFRequirer:
             relations=[nrf_relation],
         )
 
-        self.ctx.run(nrf_relation.changed_event, state_in)
+        self.ctx.run(self.ctx.on.relation_changed(nrf_relation), state_in)
 
         assert "Invalid relation data: {'pizza': 'steak'}" in caplog.messages
 
@@ -130,11 +130,12 @@ class TestFiveGNRFRequirer:
             relations=[nrf_relation],
         )
 
-        action_output = self.ctx.run_action("get-nrf-url", state_in)
+        self.ctx.run(self.ctx.on.action("get-nrf-url"), state_in)
 
-        assert action_output.success is True
-        assert action_output.results
-        assert action_output.results["nrf-url"] == "http://nrf.com"
+        assert self.ctx.action_results
+        assert self.ctx.action_results == {
+            "nrf-url": "http://nrf.com",
+        }
 
     def test_given_nrf_information_not_in_relation_data_when_get_nrf_url_then_returns_none(  # noqa: E501
         self, caplog
@@ -147,11 +148,12 @@ class TestFiveGNRFRequirer:
             relations=[nrf_relation],
         )
 
-        action_output = self.ctx.run_action("get-nrf-url", state_in)
+        self.ctx.run(self.ctx.on.action("get-nrf-url"), state_in)
 
-        assert action_output.success is True
-        assert action_output.results
-        assert action_output.results["nrf-url"] is None
+        assert self.ctx.action_results
+        assert self.ctx.action_results == {
+            "nrf-url": None,
+        }
         assert "Invalid relation data: {}" in caplog.messages
 
     def test_given_nrf_information_in_relation_data_is_not_valid_when_get_nrf_url_then_returns_none_and_error_is_logged(  # noqa: E501
@@ -168,11 +170,12 @@ class TestFiveGNRFRequirer:
             relations=[nrf_relation],
         )
 
-        action_output = self.ctx.run_action("get-nrf-url", state_in)
+        self.ctx.run(self.ctx.on.action("get-nrf-url"), state_in)
 
-        assert action_output.success is True
-        assert action_output.results
-        assert action_output.results["nrf-url"] is None
+        assert self.ctx.action_results
+        assert self.ctx.action_results == {
+            "nrf-url": None,
+        }
         assert "Invalid relation data: {'pizza': 'steak'}" in caplog.messages
 
     def test_given_nrf_relation_created_when_relation_broken_then_nrf_broken_event_emitted(self):
@@ -184,7 +187,7 @@ class TestFiveGNRFRequirer:
             relations=[nrf_relation],
         )
 
-        self.ctx.run(nrf_relation.broken_event, state_in)
+        self.ctx.run(self.ctx.on.relation_broken(nrf_relation), state_in)
 
         assert len(self.ctx.emitted_events) == 2
         assert isinstance(self.ctx.emitted_events[1], NRFBrokenEvent)

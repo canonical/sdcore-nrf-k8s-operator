@@ -20,18 +20,19 @@ class TestCharmGiveGNRFRelatonJoined(NRFUnitTestFixtures):
             name="nrf",
             can_connect=True,
             layers={"nrf": Layer({"services": {"nrf": {}}})},
-            service_status={
+            service_statuses={
                 "nrf": ServiceStatus.ACTIVE,
             },
         )
         state_in = scenario.State(
             containers=[container],
+            relations=[fiveg_nrf_relation],
             leader=True,
         )
 
-        self.ctx.run(fiveg_nrf_relation.joined_event, state_in)
+        self.ctx.run(self.ctx.on.relation_joined(fiveg_nrf_relation), state_in)
 
         self.mock_set_nrf_information.assert_called_with(
             url="https://sdcore-nrf-k8s:29510",
-            relation_id=fiveg_nrf_relation.relation_id,
+            relation_id=fiveg_nrf_relation.id,
         )
