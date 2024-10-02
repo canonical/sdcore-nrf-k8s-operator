@@ -11,16 +11,20 @@ The base module is not intended to be deployed in separation (it is possible tho
 - **main.tf** - Defines the Juju application to be deployed.
 - **variables.tf** - Allows customization of the deployment options (Juju model name, channel or application name).
 - **output.tf** - Responsible for integrating the module with other Terraform modules, primarily by defining potential integration endpoints (charm integrations), but also by exposing the application name.
-- **terraform.tf** - Defines the Terraform provider.
+- **versions.tf** - Defines the Terraform provider.
 
 ## Using sdcore-nrf-k8s base module in higher level modules
 
 If you want to use `sdcore-nrf-k8s` base module as part of your Terraform module, import it like shown below.
 
 ```text
+data "juju_model" "my_model" {
+  name = "my_model_name"
+}
+
 module "sdcore-nrf-k8s" {
   source                 = "git::https://github.com/canonical/sdcore-nrf-k8s-operator//terraform"
-  model_name             = "juju_model_name"  
+  model = juju_model.my_model.name
   # Optional Configurations
   # channel                        = "put the Charm channel here" 
   # app_name                       = "put the application name here" 
@@ -35,12 +39,12 @@ resource "juju_integration" "nrf-db" {
 
   application {
     name     = module.nrf.app_name
-    endpoint = module.nrf.database_endpoint
+    endpoint = module.nrf.requires.database
   }
 
   application {
     name     = module.mongodb.app_name
-    endpoint = module.mongodb.database_endpoint
+    endpoint = module.mongodb.provides.database
   }
 }
 ```
