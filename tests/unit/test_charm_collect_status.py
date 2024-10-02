@@ -22,7 +22,7 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
             leader=True,
         )
 
-        state_out = self.ctx.run("collect_unit_status", state_in)
+        state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
         assert state_out.unit_status == WaitingStatus("Waiting for container to be ready")
 
@@ -36,7 +36,7 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
             leader=True,
         )
 
-        state_out = self.ctx.run("collect_unit_status", state_in)
+        state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
         assert state_out.unit_status == BlockedStatus(
             "Waiting for database, sdcore_config, certificates relation(s)"
@@ -59,7 +59,7 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
             leader=True,
         )
 
-        state_out = self.ctx.run("collect_unit_status", state_in)
+        state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
         assert state_out.unit_status == BlockedStatus(
             "Waiting for sdcore_config, certificates relation(s)"
@@ -86,7 +86,7 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
             leader=True,
         )
 
-        state_out = self.ctx.run("collect_unit_status", state_in)
+        state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
         assert state_out.unit_status == BlockedStatus("Waiting for sdcore_config relation(s)")
 
@@ -116,7 +116,7 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
         )
         self.mock_database_resource_created.return_value = False
 
-        state_out = self.ctx.run("collect_unit_status", state_in)
+        state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
         assert state_out.unit_status == WaitingStatus("Waiting for the database to be available")
 
@@ -147,7 +147,7 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
         self.mock_database_resource_created.return_value = True
         self.mock_database_relation_data.return_value = {}
 
-        state_out = self.ctx.run("collect_unit_status", state_in)
+        state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
         assert state_out.unit_status == WaitingStatus("Waiting for database URI")
 
@@ -177,11 +177,11 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
         )
         self.mock_database_resource_created.return_value = True
         self.mock_database_relation_data.return_value = {
-            database_relation.relation_id: {"uris": "mongodb://localhost:27017"},
+            database_relation.id: {"uris": "mongodb://localhost:27017"},
         }
         self.mock_sdcore_config_webui_url.return_value = None
 
-        state_out = self.ctx.run("collect_unit_status", state_in)
+        state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
         assert state_out.unit_status == WaitingStatus("Waiting for Webui data to be available")
 
@@ -211,11 +211,11 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
         )
         self.mock_database_resource_created.return_value = True
         self.mock_database_relation_data.return_value = {
-            database_relation.relation_id: {"uris": "mongodb://localhost:27017"},
+            database_relation.id: {"uris": "mongodb://localhost:27017"},
         }
         self.mock_sdcore_config_webui_url.return_value = "https://webui.url"
 
-        state_out = self.ctx.run("collect_unit_status", state_in)
+        state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
         assert state_out.unit_status == WaitingStatus("Waiting for storage to be attached")
 
@@ -237,11 +237,11 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
             )
             config_mount = scenario.Mount(
                 location="/etc/nrf/",
-                src=tempdir,
+                source=tempdir,
             )
             certs_mount = scenario.Mount(
                 location="/support/TLS/",
-                src=tempdir,
+                source=tempdir,
             )
             container = scenario.Container(
                 name="nrf",
@@ -258,12 +258,12 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
             )
             self.mock_database_resource_created.return_value = True
             self.mock_database_relation_data.return_value = {
-                database_relation.relation_id: {"uris": "mongodb://localhost:27017"},
+                database_relation.id: {"uris": "mongodb://localhost:27017"},
             }
             self.mock_sdcore_config_webui_url.return_value = "https://webui.url"
             self.mock_get_assigned_certificate.return_value = (None, None)
 
-            state_out = self.ctx.run("collect_unit_status", state_in)
+            state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
             assert state_out.unit_status == WaitingStatus(
                 "Waiting for certificates to be available"
@@ -287,11 +287,11 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
             )
             config_mount = scenario.Mount(
                 location="/etc/nrf/",
-                src=tempdir,
+                source=tempdir,
             )
             certs_mount = scenario.Mount(
                 location="/support/TLS/",
-                src=tempdir,
+                source=tempdir,
             )
             container = scenario.Container(
                 name="nrf",
@@ -308,15 +308,15 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
             )
             self.mock_database_resource_created.return_value = True
             self.mock_database_relation_data.return_value = {
-                database_relation.relation_id: {"uris": "mongodb://localhost:27017"},
+                database_relation.id: {"uris": "mongodb://localhost:27017"},
             }
             self.mock_sdcore_config_webui_url.return_value = "https://webui.url"
             provider_certificate, private_key = example_cert_and_key(
-                tls_relation_id=certificates_relation.relation_id
+                tls_relation_id=certificates_relation.id
             )
             self.mock_get_assigned_certificate.return_value = (provider_certificate, private_key)
 
-            state_out = self.ctx.run("collect_unit_status", state_in)
+            state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
             assert state_out.unit_status == WaitingStatus("Waiting for NRF service to start")
 
@@ -338,17 +338,17 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
             )
             config_mount = scenario.Mount(
                 location="/etc/nrf/",
-                src=tempdir,
+                source=tempdir,
             )
             certs_mount = scenario.Mount(
                 location="/support/TLS/",
-                src=tempdir,
+                source=tempdir,
             )
             container = scenario.Container(
                 name="nrf",
                 can_connect=True,
                 layers={"nrf": Layer({"services": {"nrf": {}}})},
-                service_status={
+                service_statuses={
                     "nrf": ServiceStatus.ACTIVE,
                 },
                 mounts={
@@ -363,18 +363,18 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
             )
             self.mock_database_resource_created.return_value = True
             self.mock_database_relation_data.return_value = {
-                database_relation.relation_id: {"uris": "mongodb://localhost:27017"},
+                database_relation.id: {"uris": "mongodb://localhost:27017"},
             }
             self.mock_sdcore_config_webui_url.return_value = "https://webui.url"
 
             provider_certificate, private_key = example_cert_and_key(
-                tls_relation_id=certificates_relation.relation_id
+                tls_relation_id=certificates_relation.id
             )
             self.mock_get_assigned_certificate.return_value = provider_certificate, private_key
             with open(f"{tempdir}/nrf.pem", "w") as f:
                 f.write("whatever cert")
 
-            state_out = self.ctx.run("collect_unit_status", state_in)
+            state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
             assert state_out.unit_status == ActiveStatus()
 
@@ -390,7 +390,7 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
             leader=True,
         )
 
-        state_out = self.ctx.run("collect_unit_status", state_in)
+        state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
         assert state_out.workload_version == ""
 
@@ -400,7 +400,7 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
         with tempfile.TemporaryDirectory() as temp_dir:
             workload_version_mount = scenario.Mount(
                 location="/etc",
-                src=temp_dir,
+                source=temp_dir,
             )
             container = scenario.Container(
                 name="nrf",
@@ -414,6 +414,6 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
             with open(f"{temp_dir}/workload-version", "w") as f:
                 f.write("1.2.3")
 
-            state_out = self.ctx.run("collect_unit_status", state_in)
+            state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
             assert state_out.workload_version == "1.2.3"

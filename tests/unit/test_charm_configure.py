@@ -31,11 +31,11 @@ class TestCharmConfigure(NRFUnitTestFixtures):
             )
             config_mount = scenario.Mount(
                 location="/etc/nrf",
-                src=temp_dir,
+                source=temp_dir,
             )
             certs_mount = scenario.Mount(
                 location="/support/TLS",
-                src=temp_dir,
+                source=temp_dir,
             )
             container = scenario.Container(
                 name="nrf",
@@ -49,15 +49,15 @@ class TestCharmConfigure(NRFUnitTestFixtures):
             )
             self.mock_database_resource_created.return_value = True
             self.mock_database_relation_data.return_value = {
-                database_relation.relation_id: {"uris": "http://dummy"},
+                database_relation.id: {"uris": "http://dummy"},
             }
             self.mock_sdcore_config_webui_url.return_value = "some-webui:7890"
             provider_certificate, private_key = example_cert_and_key(
-                tls_relation_id=certificates_relation.relation_id
+                tls_relation_id=certificates_relation.id
             )
             self.mock_get_assigned_certificate.return_value = (provider_certificate, private_key)
 
-            self.ctx.run(container.pebble_ready_event, state_in)
+            self.ctx.run(self.ctx.on.pebble_ready(container=container), state_in)
 
             with open(f"{temp_dir}/nrfcfg.yaml", "r") as config_file:
                 config_content = config_file.read()
@@ -85,11 +85,11 @@ class TestCharmConfigure(NRFUnitTestFixtures):
             )
             config_mount = scenario.Mount(
                 location="/etc/nrf",
-                src=temp_dir,
+                source=temp_dir,
             )
             certs_mount = scenario.Mount(
                 location="/support/TLS",
-                src=temp_dir,
+                source=temp_dir,
             )
             container = scenario.Container(
                 name="nrf",
@@ -103,11 +103,11 @@ class TestCharmConfigure(NRFUnitTestFixtures):
             )
             self.mock_database_resource_created.return_value = True
             self.mock_database_relation_data.return_value = {
-                database_relation.relation_id: {"uris": "http://dummy"},
+                database_relation.id: {"uris": "http://dummy"},
             }
             self.mock_sdcore_config_webui_url.return_value = "some-webui:7890"
             provider_certificate, private_key = example_cert_and_key(
-                tls_relation_id=certificates_relation.relation_id
+                tls_relation_id=certificates_relation.id
             )
             self.mock_get_assigned_certificate.return_value = (provider_certificate, private_key)
             with open("tests/unit/expected_config/config.conf", "r") as expected_config_file:
@@ -116,7 +116,7 @@ class TestCharmConfigure(NRFUnitTestFixtures):
                 config_file.write(expected_content.strip())
             config_modification_time = os.stat(temp_dir + "/nrfcfg.yaml").st_mtime
 
-            self.ctx.run(container.pebble_ready_event, state_in)
+            self.ctx.run(self.ctx.on.pebble_ready(container=container), state_in)
 
             with open(f"{temp_dir}/nrfcfg.yaml", "r") as config_file:
                 config_content = config_file.read()
@@ -145,11 +145,11 @@ class TestCharmConfigure(NRFUnitTestFixtures):
             )
             config_mount = scenario.Mount(
                 location="/etc/nrf",
-                src=temp_dir,
+                source=temp_dir,
             )
             certs_mount = scenario.Mount(
                 location="/support/TLS",
-                src=temp_dir,
+                source=temp_dir,
             )
             container = scenario.Container(
                 name="nrf",
@@ -163,17 +163,18 @@ class TestCharmConfigure(NRFUnitTestFixtures):
             )
             self.mock_database_resource_created.return_value = True
             self.mock_database_relation_data.return_value = {
-                database_relation.relation_id: {"uris": "http://dummy"},
+                database_relation.id: {"uris": "http://dummy"},
             }
             self.mock_sdcore_config_webui_url.return_value = "some-webui:7890"
             provider_certificate, private_key = example_cert_and_key(
-                tls_relation_id=certificates_relation.relation_id
+                tls_relation_id=certificates_relation.id
             )
             self.mock_get_assigned_certificate.return_value = (provider_certificate, private_key)
 
-            state_out = self.ctx.run(container.pebble_ready_event, state_in)
+            state_out = self.ctx.run(self.ctx.on.pebble_ready(container=container), state_in)
 
-            assert state_out.containers[0].layers["nrf"] == Layer(
+            container = state_out.get_container("nrf")
+            assert container.layers["nrf"] == Layer(
                 {
                     "summary": "nrf layer",
                     "description": "pebble config layer for nrf",
@@ -216,11 +217,11 @@ class TestCharmConfigure(NRFUnitTestFixtures):
             )
             config_mount = scenario.Mount(
                 location="/etc/nrf",
-                src=temp_dir,
+                source=temp_dir,
             )
             certs_mount = scenario.Mount(
                 location="/support/TLS",
-                src=temp_dir,
+                source=temp_dir,
             )
             container = scenario.Container(
                 name="nrf",
@@ -239,15 +240,15 @@ class TestCharmConfigure(NRFUnitTestFixtures):
             )
             self.mock_database_resource_created.return_value = True
             self.mock_database_relation_data.return_value = {
-                database_relation.relation_id: {"uris": "http://dummy"},
+                database_relation.id: {"uris": "http://dummy"},
             }
             self.mock_sdcore_config_webui_url.return_value = "some-webui:7890"
             provider_certificate, private_key = example_cert_and_key(
-                tls_relation_id=certificates_relation.relation_id
+                tls_relation_id=certificates_relation.id
             )
             self.mock_get_assigned_certificate.return_value = (provider_certificate, private_key)
 
-            self.ctx.run(container.pebble_ready_event, state_in)
+            self.ctx.run(self.ctx.on.pebble_ready(container=container), state_in)
 
             self.mock_set_nrf_information_in_all_relations.assert_called_once()
 
@@ -269,11 +270,11 @@ class TestCharmConfigure(NRFUnitTestFixtures):
             )
             config_mount = scenario.Mount(
                 location="/etc/nrf",
-                src=temp_dir,
+                source=temp_dir,
             )
             certs_mount = scenario.Mount(
                 location="/support/TLS",
-                src=temp_dir,
+                source=temp_dir,
             )
             container = scenario.Container(
                 name="nrf",
@@ -290,11 +291,11 @@ class TestCharmConfigure(NRFUnitTestFixtures):
                 leader=True,
             )
             provider_certificate, private_key = example_cert_and_key(
-                tls_relation_id=certificates_relation.relation_id
+                tls_relation_id=certificates_relation.id
             )
             self.mock_get_assigned_certificate.return_value = (provider_certificate, private_key)
 
-            self.ctx.run(container.pebble_ready_event, state_in)
+            self.ctx.run(self.ctx.on.pebble_ready(container=container), state_in)
 
             with open(f"{temp_dir}/nrf.pem", "r") as f:
                 certificate = f.read()

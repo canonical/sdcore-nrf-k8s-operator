@@ -79,17 +79,17 @@ class TestFiveGNRFProvider:
             leader=True,
             relations=[nrf_relation],
         )
-        action = scenario.Action(
-            name="set-nrf-information",
-            params={
-                "url": "http://whatever.url.com",
-                "relation-id": str(nrf_relation.relation_id),
-            },
+        params = {
+            "url": "http://whatever.url.com",
+            "relation-id": str(nrf_relation.id),
+        }
+
+        state_out = self.ctx.run(
+            self.ctx.on.action("set-nrf-information", params=params), state_in
         )
 
-        action_output = self.ctx.run_action(action, state_in)
-
-        assert action_output.state.relations[0].local_app_data["url"] == "http://whatever.url.com"
+        relation = state_out.get_relation(nrf_relation.id)
+        assert relation.local_app_data["url"] == "http://whatever.url.com"
 
     def test_given_unit_is_not_leader_when_set_nrf_information_then_data_is_not_in_application_databag(  # noqa: E501
         self,
@@ -102,16 +102,13 @@ class TestFiveGNRFProvider:
             leader=False,
             relations=[nrf_relation],
         )
-        action = scenario.Action(
-            name="set-nrf-information",
-            params={
-                "url": "http://whatever.url.com",
-                "relation-id": str(nrf_relation.relation_id),
-            },
-        )
+        params = {
+            "url": "http://whatever.url.com",
+            "relation-id": str(nrf_relation.id),
+        }
 
         with pytest.raises(Exception) as e:
-            self.ctx.run_action(action, state_in)
+            self.ctx.run(self.ctx.on.action("set-nrf-information", params=params), state_in)
 
         assert "Unit must be leader to set application relation data" in str(e.value)
 
@@ -126,16 +123,13 @@ class TestFiveGNRFProvider:
             leader=True,
             relations=[nrf_relation],
         )
-        action = scenario.Action(
-            name="set-nrf-information",
-            params={
-                "url": "invalid url",
-                "relation-id": str(nrf_relation.relation_id),
-            },
-        )
+        params = {
+            "url": "invalid url",
+            "relation-id": str(nrf_relation.id),
+        }
 
         with pytest.raises(Exception) as e:
-            self.ctx.run_action(action, state_in)
+            self.ctx.run(self.ctx.on.action("set-nrf-information", params=params), state_in)
 
         assert "invalid url" in str(e.value)
 
@@ -146,16 +140,13 @@ class TestFiveGNRFProvider:
             leader=True,
             relations=[],
         )
-        action = scenario.Action(
-            name="set-nrf-information",
-            params={
-                "url": "http://whatever.url.com",
-                "relation-id": "0",
-            },
-        )
+        params = {
+            "url": "http://whatever.url.com",
+            "relation-id": "0",
+        }
 
         with pytest.raises(Exception) as e:
-            self.ctx.run_action(action, state_in)
+            self.ctx.run(self.ctx.on.action("set-nrf-information", params=params), state_in)
 
         assert "Relation fiveg_nrf not created yet." in str(e.value)
 
@@ -174,14 +165,15 @@ class TestFiveGNRFProvider:
             leader=True,
             relations=[nrf_relation_1, nrf_relation_2],
         )
-        action = scenario.Action(
-            name="set-nrf-information-in-all-relations",
-            params={
-                "url": "http://whatever.url.com",
-            },
+        params = {
+            "url": "http://whatever.url.com",
+        }
+
+        state_out = self.ctx.run(
+            self.ctx.on.action("set-nrf-information-in-all-relations", params=params), state_in
         )
 
-        action_output = self.ctx.run_action(action, state_in)
-
-        assert action_output.state.relations[0].local_app_data["url"] == "http://whatever.url.com"
-        assert action_output.state.relations[1].local_app_data["url"] == "http://whatever.url.com"
+        relation_1 = state_out.get_relation(nrf_relation_1.id)
+        relation_2 = state_out.get_relation(nrf_relation_2.id)
+        assert relation_1.local_app_data["url"] == "http://whatever.url.com"
+        assert relation_2.local_app_data["url"] == "http://whatever.url.com"

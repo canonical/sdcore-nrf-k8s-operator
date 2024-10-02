@@ -19,7 +19,7 @@ class TestCharmCertificateRelationBroken(NRFUnitTestFixtures):
             )
             certs_mount = scenario.Mount(
                 location="/support/TLS",
-                src=temp_dir,
+                source=temp_dir,
             )
             container = scenario.Container(
                 name="nrf",
@@ -36,7 +36,7 @@ class TestCharmCertificateRelationBroken(NRFUnitTestFixtures):
             with open(f"{temp_dir}/nrf.key", "w") as key_file:
                 key_file.write("key")
 
-            self.ctx.run(certificates_relation.broken_event, state_in)
+            self.ctx.run(self.ctx.on.relation_broken(certificates_relation), state_in)
 
             assert not os.path.exists(f"{temp_dir}/nrf.pem")
             assert not os.path.exists(f"{temp_dir}/nrf.key")
