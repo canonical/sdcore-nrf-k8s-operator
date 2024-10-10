@@ -30,10 +30,10 @@ from ops import (
     ModelError,
     RelationBrokenEvent,
     WaitingStatus,
+    main,
 )
 from ops.charm import CharmBase, RelationJoinedEvent
 from ops.framework import EventBase
-from ops.main import main
 from ops.pebble import Layer
 
 logger = logging.getLogger(__name__)
