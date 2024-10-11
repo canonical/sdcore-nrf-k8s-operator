@@ -18,7 +18,7 @@ from charms.sdcore_nms_k8s.v0.sdcore_config import (
 from charms.sdcore_nrf_k8s.v0.fiveg_nrf import NRFProvides
 from charms.tls_certificates_interface.v4.tls_certificates import (
     Certificate,
-    CertificateRequest,
+    CertificateRequestAttributes,
     PrivateKey,
     TLSCertificatesRequiresV4,
 )
@@ -431,8 +431,8 @@ class NRFOperatorCharm(CharmBase):
         self.nrf_provider.set_nrf_information_in_all_relations(nrf_url)
 
     @staticmethod
-    def _get_certificate_request() -> CertificateRequest:
-        return CertificateRequest(
+    def _get_certificate_request() -> CertificateRequestAttributes:
+        return CertificateRequestAttributes(
             common_name=CERTIFICATE_COMMON_NAME,
             sans_dns=frozenset([CERTIFICATE_COMMON_NAME]),
         )
