@@ -4,7 +4,7 @@
 
 import tempfile
 
-import scenario
+from ops import testing
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 from ops.pebble import Layer, ServiceStatus
 
@@ -14,10 +14,10 @@ from tests.unit.fixtures import NRFUnitTestFixtures
 
 class TestCharmCollectStatus(NRFUnitTestFixtures):
     def test_given_container_not_ready_when_collect_unit_status_then_status_is_waiting(self):
-        container = scenario.Container(
+        container = testing.Container(
             name="nrf",
         )
-        state_in = scenario.State(
+        state_in = testing.State(
             containers=[container],
             leader=True,
         )
@@ -27,11 +27,11 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
         assert state_out.unit_status == WaitingStatus("Waiting for container to be ready")
 
     def test_given_relations_not_created_when_collect_unit_status_then_status_is_blocked(self):
-        container = scenario.Container(
+        container = testing.Container(
             name="nrf",
             can_connect=True,
         )
-        state_in = scenario.State(
+        state_in = testing.State(
             containers=[container],
             leader=True,
         )
@@ -45,15 +45,15 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
     def test_given_certificates_and_nms_relations_not_created_when_collect_unit_status_then_status_is_blocked(  # noqa: E501
         self,
     ):
-        database_relation = scenario.Relation(
+        database_relation = testing.Relation(
             endpoint="database",
             interface="mongodb_client",
         )
-        container = scenario.Container(
+        container = testing.Container(
             name="nrf",
             can_connect=True,
         )
-        state_in = scenario.State(
+        state_in = testing.State(
             containers=[container],
             relations=[database_relation],
             leader=True,
@@ -68,19 +68,19 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
     def test_given_nms_relation_not_created_when_collect_unit_status_then_status_is_blocked(
         self,
     ):
-        database_relation = scenario.Relation(
+        database_relation = testing.Relation(
             endpoint="database",
             interface="mongodb_client",
         )
-        certificates_relation = scenario.Relation(
+        certificates_relation = testing.Relation(
             endpoint="certificates",
             interface="tls-certificates",
         )
-        container = scenario.Container(
+        container = testing.Container(
             name="nrf",
             can_connect=True,
         )
-        state_in = scenario.State(
+        state_in = testing.State(
             containers=[container],
             relations=[database_relation, certificates_relation],
             leader=True,
@@ -93,23 +93,23 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
     def test_given_database_not_available_when_collect_unit_status_then_status_is_waiting(
         self,
     ):
-        database_relation = scenario.Relation(
+        database_relation = testing.Relation(
             endpoint="database",
             interface="mongodb_client",
         )
-        certificates_relation = scenario.Relation(
+        certificates_relation = testing.Relation(
             endpoint="certificates",
             interface="tls-certificates",
         )
-        nms_relation = scenario.Relation(
+        nms_relation = testing.Relation(
             endpoint="sdcore_config",
             interface="sdcore_config",
         )
-        container = scenario.Container(
+        container = testing.Container(
             name="nrf",
             can_connect=True,
         )
-        state_in = scenario.State(
+        state_in = testing.State(
             containers=[container],
             relations=[database_relation, certificates_relation, nms_relation],
             leader=True,
@@ -123,23 +123,23 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
     def test_given_database_information_not_available_when_collect_unit_status_then_status_is_waiting(  # noqa: E501
         self,
     ):
-        certificates_relation = scenario.Relation(
+        certificates_relation = testing.Relation(
             endpoint="certificates",
             interface="tls-certificates",
         )
-        database_relation = scenario.Relation(
+        database_relation = testing.Relation(
             endpoint="database",
             interface="mongodb_client",
         )
-        nms_relation = scenario.Relation(
+        nms_relation = testing.Relation(
             endpoint="sdcore_config",
             interface="sdcore_config",
         )
-        container = scenario.Container(
+        container = testing.Container(
             name="nrf",
             can_connect=True,
         )
-        state_in = scenario.State(
+        state_in = testing.State(
             containers=[container],
             relations=[certificates_relation, database_relation, nms_relation],
             leader=True,
@@ -154,23 +154,23 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
     def test_given_webui_data_not_available_when_collect_unit_status_then_status_is_waiting(
         self,
     ):
-        certificates_relation = scenario.Relation(
+        certificates_relation = testing.Relation(
             endpoint="certificates",
             interface="tls-certificates",
         )
-        database_relation = scenario.Relation(
+        database_relation = testing.Relation(
             endpoint="database",
             interface="mongodb_client",
         )
-        nms_relation = scenario.Relation(
+        nms_relation = testing.Relation(
             endpoint="sdcore_config",
             interface="sdcore_config",
         )
-        container = scenario.Container(
+        container = testing.Container(
             name="nrf",
             can_connect=True,
         )
-        state_in = scenario.State(
+        state_in = testing.State(
             containers=[container],
             relations=[certificates_relation, database_relation, nms_relation],
             leader=True,
@@ -188,23 +188,23 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
     def test_given_storage_not_attached_when_collect_unit_status_then_status_is_waiting(
         self,
     ):
-        certificates_relation = scenario.Relation(
+        certificates_relation = testing.Relation(
             endpoint="certificates",
             interface="tls-certificates",
         )
-        database_relation = scenario.Relation(
+        database_relation = testing.Relation(
             endpoint="database",
             interface="mongodb_client",
         )
-        nms_relation = scenario.Relation(
+        nms_relation = testing.Relation(
             endpoint="sdcore_config",
             interface="sdcore_config",
         )
-        container = scenario.Container(
+        container = testing.Container(
             name="nrf",
             can_connect=True,
         )
-        state_in = scenario.State(
+        state_in = testing.State(
             containers=[container],
             relations=[certificates_relation, database_relation, nms_relation],
             leader=True,
@@ -223,27 +223,27 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
         self,
     ):
         with tempfile.TemporaryDirectory() as tempdir:
-            certificates_relation = scenario.Relation(
+            certificates_relation = testing.Relation(
                 endpoint="certificates",
                 interface="tls-certificates",
             )
-            database_relation = scenario.Relation(
+            database_relation = testing.Relation(
                 endpoint="database",
                 interface="mongodb_client",
             )
-            nms_relation = scenario.Relation(
+            nms_relation = testing.Relation(
                 endpoint="sdcore_config",
                 interface="sdcore_config",
             )
-            config_mount = scenario.Mount(
+            config_mount = testing.Mount(
                 location="/etc/nrf/",
                 source=tempdir,
             )
-            certs_mount = scenario.Mount(
+            certs_mount = testing.Mount(
                 location="/support/TLS/",
                 source=tempdir,
             )
-            container = scenario.Container(
+            container = testing.Container(
                 name="nrf",
                 can_connect=True,
                 mounts={
@@ -251,7 +251,7 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
                     "certs": certs_mount,
                 },
             )
-            state_in = scenario.State(
+            state_in = testing.State(
                 containers=[container],
                 relations=[certificates_relation, database_relation, nms_relation],
                 leader=True,
@@ -273,27 +273,27 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
         self,
     ):
         with tempfile.TemporaryDirectory() as tempdir:
-            certificates_relation = scenario.Relation(
+            certificates_relation = testing.Relation(
                 endpoint="certificates",
                 interface="tls-certificates",
             )
-            database_relation = scenario.Relation(
+            database_relation = testing.Relation(
                 endpoint="database",
                 interface="mongodb_client",
             )
-            nms_relation = scenario.Relation(
+            nms_relation = testing.Relation(
                 endpoint="sdcore_config",
                 interface="sdcore_config",
             )
-            config_mount = scenario.Mount(
+            config_mount = testing.Mount(
                 location="/etc/nrf/",
                 source=tempdir,
             )
-            certs_mount = scenario.Mount(
+            certs_mount = testing.Mount(
                 location="/support/TLS/",
                 source=tempdir,
             )
-            container = scenario.Container(
+            container = testing.Container(
                 name="nrf",
                 can_connect=True,
                 mounts={
@@ -301,7 +301,7 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
                     "certs": certs_mount,
                 },
             )
-            state_in = scenario.State(
+            state_in = testing.State(
                 containers=[container],
                 relations=[certificates_relation, database_relation, nms_relation],
                 leader=True,
@@ -324,27 +324,27 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
         self,
     ):
         with tempfile.TemporaryDirectory() as tempdir:
-            certificates_relation = scenario.Relation(
+            certificates_relation = testing.Relation(
                 endpoint="certificates",
                 interface="tls-certificates",
             )
-            database_relation = scenario.Relation(
+            database_relation = testing.Relation(
                 endpoint="database",
                 interface="mongodb_client",
             )
-            nms_relation = scenario.Relation(
+            nms_relation = testing.Relation(
                 endpoint="sdcore_config",
                 interface="sdcore_config",
             )
-            config_mount = scenario.Mount(
+            config_mount = testing.Mount(
                 location="/etc/nrf/",
                 source=tempdir,
             )
-            certs_mount = scenario.Mount(
+            certs_mount = testing.Mount(
                 location="/support/TLS/",
                 source=tempdir,
             )
-            container = scenario.Container(
+            container = testing.Container(
                 name="nrf",
                 can_connect=True,
                 layers={"nrf": Layer({"services": {"nrf": {}}})},
@@ -356,7 +356,7 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
                     "certs": certs_mount,
                 },
             )
-            state_in = scenario.State(
+            state_in = testing.State(
                 containers=[container],
                 relations=[certificates_relation, database_relation, nms_relation],
                 leader=True,
@@ -381,11 +381,11 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
     def test_given_no_workload_version_file_when_collect_unit_status_then_workload_version_not_set(  # noqa: E501
         self,
     ):
-        container = scenario.Container(
+        container = testing.Container(
             name="nrf",
             can_connect=True,
         )
-        state_in = scenario.State(
+        state_in = testing.State(
             containers=[container],
             leader=True,
         )
@@ -398,16 +398,16 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
         self,
     ):
         with tempfile.TemporaryDirectory() as temp_dir:
-            workload_version_mount = scenario.Mount(
+            workload_version_mount = testing.Mount(
                 location="/etc",
                 source=temp_dir,
             )
-            container = scenario.Container(
+            container = testing.Container(
                 name="nrf",
                 can_connect=True,
                 mounts={"workload-version": workload_version_mount},
             )
-            state_in = scenario.State(
+            state_in = testing.State(
                 containers=[container],
                 leader=True,
             )
