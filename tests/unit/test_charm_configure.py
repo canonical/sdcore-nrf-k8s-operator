@@ -5,7 +5,7 @@
 import os
 import tempfile
 
-import scenario
+from ops import testing
 from ops.pebble import Layer
 
 from tests.unit.certificates_helpers import example_cert_and_key
@@ -17,32 +17,32 @@ class TestCharmConfigure(NRFUnitTestFixtures):
         self,
     ):
         with tempfile.TemporaryDirectory() as temp_dir:
-            database_relation = scenario.Relation(
+            database_relation = testing.Relation(
                 endpoint="database",
                 interface="data-platform",
             )
-            certificates_relation = scenario.Relation(
+            certificates_relation = testing.Relation(
                 endpoint="certificates",
                 interface="tls-certificates",
             )
-            nms_relation = scenario.Relation(
+            nms_relation = testing.Relation(
                 endpoint="sdcore_config",
                 interface="sdcore_config",
             )
-            config_mount = scenario.Mount(
+            config_mount = testing.Mount(
                 location="/etc/nrf",
                 source=temp_dir,
             )
-            certs_mount = scenario.Mount(
+            certs_mount = testing.Mount(
                 location="/support/TLS",
                 source=temp_dir,
             )
-            container = scenario.Container(
+            container = testing.Container(
                 name="nrf",
                 can_connect=True,
                 mounts={"config": config_mount, "certs": certs_mount},
             )
-            state_in = scenario.State(
+            state_in = testing.State(
                 containers=[container],
                 relations=[database_relation, certificates_relation, nms_relation],
                 leader=True,
@@ -71,32 +71,32 @@ class TestCharmConfigure(NRFUnitTestFixtures):
         self,
     ):
         with tempfile.TemporaryDirectory() as temp_dir:
-            database_relation = scenario.Relation(
+            database_relation = testing.Relation(
                 endpoint="database",
                 interface="data-platform",
             )
-            certificates_relation = scenario.Relation(
+            certificates_relation = testing.Relation(
                 endpoint="certificates",
                 interface="tls-certificates",
             )
-            nms_relation = scenario.Relation(
+            nms_relation = testing.Relation(
                 endpoint="sdcore_config",
                 interface="sdcore_config",
             )
-            config_mount = scenario.Mount(
+            config_mount = testing.Mount(
                 location="/etc/nrf",
                 source=temp_dir,
             )
-            certs_mount = scenario.Mount(
+            certs_mount = testing.Mount(
                 location="/support/TLS",
                 source=temp_dir,
             )
-            container = scenario.Container(
+            container = testing.Container(
                 name="nrf",
                 can_connect=True,
                 mounts={"config": config_mount, "certs": certs_mount},
             )
-            state_in = scenario.State(
+            state_in = testing.State(
                 containers=[container],
                 relations=[database_relation, certificates_relation, nms_relation],
                 leader=True,
@@ -131,32 +131,32 @@ class TestCharmConfigure(NRFUnitTestFixtures):
         self,
     ):
         with tempfile.TemporaryDirectory() as temp_dir:
-            database_relation = scenario.Relation(
+            database_relation = testing.Relation(
                 endpoint="database",
                 interface="data-platform",
             )
-            certificates_relation = scenario.Relation(
+            certificates_relation = testing.Relation(
                 endpoint="certificates",
                 interface="tls-certificates",
             )
-            nms_relation = scenario.Relation(
+            nms_relation = testing.Relation(
                 endpoint="sdcore_config",
                 interface="sdcore_config",
             )
-            config_mount = scenario.Mount(
+            config_mount = testing.Mount(
                 location="/etc/nrf",
                 source=temp_dir,
             )
-            certs_mount = scenario.Mount(
+            certs_mount = testing.Mount(
                 location="/support/TLS",
                 source=temp_dir,
             )
-            container = scenario.Container(
+            container = testing.Container(
                 name="nrf",
                 can_connect=True,
                 mounts={"config": config_mount, "certs": certs_mount},
             )
-            state_in = scenario.State(
+            state_in = testing.State(
                 containers=[container],
                 relations=[database_relation, certificates_relation, nms_relation],
                 leader=True,
@@ -199,36 +199,36 @@ class TestCharmConfigure(NRFUnitTestFixtures):
         self,
     ):
         with tempfile.TemporaryDirectory() as temp_dir:
-            database_relation = scenario.Relation(
+            database_relation = testing.Relation(
                 endpoint="database",
                 interface="data-platform",
             )
-            certificates_relation = scenario.Relation(
+            certificates_relation = testing.Relation(
                 endpoint="certificates",
                 interface="tls-certificates",
             )
-            nms_relation = scenario.Relation(
+            nms_relation = testing.Relation(
                 endpoint="sdcore_config",
                 interface="sdcore_config",
             )
-            fiveg_nrf_relation = scenario.Relation(
+            fiveg_nrf_relation = testing.Relation(
                 endpoint="fiveg_nrf",
                 interface="fiveg_nrf",
             )
-            config_mount = scenario.Mount(
+            config_mount = testing.Mount(
                 location="/etc/nrf",
                 source=temp_dir,
             )
-            certs_mount = scenario.Mount(
+            certs_mount = testing.Mount(
                 location="/support/TLS",
                 source=temp_dir,
             )
-            container = scenario.Container(
+            container = testing.Container(
                 name="nrf",
                 can_connect=True,
                 mounts={"config": config_mount, "certs": certs_mount},
             )
-            state_in = scenario.State(
+            state_in = testing.State(
                 containers=[container],
                 relations=[
                     database_relation,
@@ -256,32 +256,32 @@ class TestCharmConfigure(NRFUnitTestFixtures):
         self,
     ):
         with tempfile.TemporaryDirectory() as temp_dir:
-            database_relation = scenario.Relation(
+            database_relation = testing.Relation(
                 endpoint="database",
                 interface="data-platform",
             )
-            certificates_relation = scenario.Relation(
+            certificates_relation = testing.Relation(
                 endpoint="certificates",
                 interface="tls-certificates",
             )
-            nms_relation = scenario.Relation(
+            nms_relation = testing.Relation(
                 endpoint="sdcore_config",
                 interface="sdcore_config",
             )
-            config_mount = scenario.Mount(
+            config_mount = testing.Mount(
                 location="/etc/nrf",
                 source=temp_dir,
             )
-            certs_mount = scenario.Mount(
+            certs_mount = testing.Mount(
                 location="/support/TLS",
                 source=temp_dir,
             )
-            container = scenario.Container(
+            container = testing.Container(
                 name="nrf",
                 can_connect=True,
                 mounts={"config": config_mount, "certs": certs_mount},
             )
-            state_in = scenario.State(
+            state_in = testing.State(
                 containers=[container],
                 relations=[
                     database_relation,

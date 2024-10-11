@@ -4,7 +4,7 @@
 from unittest.mock import patch
 
 import pytest
-import scenario
+from ops import testing
 from ops.charm import ActionEvent, CharmBase
 
 from lib.charms.sdcore_nrf_k8s.v0.fiveg_nrf import NRFProvides
@@ -54,7 +54,7 @@ class TestFiveGNRFProvider:
 
     @pytest.fixture(autouse=True)
     def context(self):
-        self.ctx = scenario.Context(
+        self.ctx = testing.Context(
             charm_type=DummyFiveGNRFProviderCharm,
             meta={
                 "name": "nrf-provider-charm",
@@ -71,11 +71,11 @@ class TestFiveGNRFProvider:
     def test_given_unit_is_leader_when_set_nrf_information_then_data_is_in_application_databag(  # noqa: E501
         self,
     ):
-        nrf_relation = scenario.Relation(
+        nrf_relation = testing.Relation(
             endpoint="fiveg_nrf",
             interface="fiveg_nrf",
         )
-        state_in = scenario.State(
+        state_in = testing.State(
             leader=True,
             relations=[nrf_relation],
         )
@@ -94,11 +94,11 @@ class TestFiveGNRFProvider:
     def test_given_unit_is_not_leader_when_set_nrf_information_then_data_is_not_in_application_databag(  # noqa: E501
         self,
     ):
-        nrf_relation = scenario.Relation(
+        nrf_relation = testing.Relation(
             endpoint="fiveg_nrf",
             interface="fiveg_nrf",
         )
-        state_in = scenario.State(
+        state_in = testing.State(
             leader=False,
             relations=[nrf_relation],
         )
@@ -115,11 +115,11 @@ class TestFiveGNRFProvider:
     def test_given_provided_nrf_url_is_not_valid_when_set_nrf_information_then_error_is_raised(  # noqa: E501
         self,
     ):
-        nrf_relation = scenario.Relation(
+        nrf_relation = testing.Relation(
             endpoint="fiveg_nrf",
             interface="fiveg_nrf",
         )
-        state_in = scenario.State(
+        state_in = testing.State(
             leader=True,
             relations=[nrf_relation],
         )
@@ -136,7 +136,7 @@ class TestFiveGNRFProvider:
     def test_given_unit_is_leader_and_fiveg_nrf_relation_is_not_created_when_set_nrf_information_then_runtime_error_is_raised(  # noqa: E501
         self,
     ):
-        state_in = scenario.State(
+        state_in = testing.State(
             leader=True,
             relations=[],
         )
@@ -153,15 +153,15 @@ class TestFiveGNRFProvider:
     def test_given_unit_is_leader_when_set_nrf_information_in_all_relations_then_data_in_application_databag(  # noqa: E501
         self,
     ):
-        nrf_relation_1 = scenario.Relation(
+        nrf_relation_1 = testing.Relation(
             endpoint="fiveg_nrf",
             interface="fiveg_nrf",
         )
-        nrf_relation_2 = scenario.Relation(
+        nrf_relation_2 = testing.Relation(
             endpoint="fiveg_nrf",
             interface="fiveg_nrf",
         )
-        state_in = scenario.State(
+        state_in = testing.State(
             leader=True,
             relations=[nrf_relation_1, nrf_relation_2],
         )
