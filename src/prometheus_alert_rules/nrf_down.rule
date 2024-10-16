@@ -1,0 +1,8 @@
+alert: NrfDown
+expr: up == 0
+for: 5m
+labels:
+    severity: critical
+annotations:
+    summary: "NRF availability"
+    description: "NRF is unavailable"
