@@ -113,6 +113,7 @@ class NRFOperatorCharm(CharmBase):
         self._logging = LogForwarder(charm=self, relation_name=LOGGING_RELATION_NAME)
         self._nrf_metrics_endpoint = MetricsEndpointProvider(
             self,
+            refresh_event=[self.on.update_status],
             jobs=[
                 {
                     "static_configs": [{"targets": [f"*:{PROMETHEUS_PORT}"]}],
