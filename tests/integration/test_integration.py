@@ -51,8 +51,8 @@ async def test_given_charm_is_built_when_deployed_then_status_is_blocked(
 ):
     assert ops_test.model
     await _deploy_mongodb(ops_test)
-    await _deploy_nms(ops_test)
     await _deploy_self_signed_certificates(ops_test)
+    await _deploy_nms(ops_test)
     await _deploy_grafana_agent(ops_test)
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME],
@@ -95,6 +95,7 @@ async def test_restore_tls_and_wait_for_active_status(ops_test: OpsTest, deploy)
     assert ops_test.model
     await _deploy_self_signed_certificates(ops_test)
     await ops_test.model.integrate(relation1=APP_NAME, relation2=TLS_CHARM_NAME)
+    await ops_test.model.integrate(relation1=NMS_CHARM_NAME, relation2=TLS_CHARM_NAME)
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=TIMEOUT)
 
 
@@ -168,11 +169,12 @@ async def _deploy_nms(ops_test: OpsTest):
         channel=NMS_CHARM_CHANNEL,
     )
     await ops_test.model.integrate(
-        relation1=f"{NMS_CHARM_NAME}:common_database", relation2=f"{DB_CHARM_NAME}"
+        relation1=f"{NMS_CHARM_NAME}:common_database", relation2=DB_CHARM_NAME
     )
     await ops_test.model.integrate(
-        relation1=f"{NMS_CHARM_NAME}:auth_database", relation2=f"{DB_CHARM_NAME}"
+        relation1=f"{NMS_CHARM_NAME}:auth_database", relation2=DB_CHARM_NAME
     )
+    await ops_test.model.integrate(relation1=NMS_CHARM_NAME, relation2=TLS_CHARM_NAME)
 
 
 async def _deploy_grafana_agent(ops_test: OpsTest):
