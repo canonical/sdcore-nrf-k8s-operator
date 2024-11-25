@@ -40,7 +40,7 @@ async def deploy(ops_test: OpsTest, request):
         charm,
         resources=resources,
         application_name=APP_NAME,
-        series="jammy",
+        series="noble",
     )
 
 

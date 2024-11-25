@@ -1371,16 +1371,16 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "codespell", specifier = ">=2.3.0" },
-    { name = "pyright", specifier = ">=1.1.389" },
-    { name = "ruff", specifier = ">=0.8.0" },
+    { name = "codespell" },
+    { name = "pyright" },
+    { name = "ruff" },
 ]
 test = [
-    { name = "coverage", extras = ["toml"], specifier = ">=7.6.8" },
+    { name = "coverage", extras = ["toml"] },
     { name = "juju", specifier = ">=3.5.2.1" },
-    { name = "pytest", specifier = ">=8.3.3" },
-    { name = "pytest-asyncio", specifier = ">=0.21.2" },
-    { name = "pytest-operator", specifier = ">=0.38.0" },
+    { name = "pytest" },
+    { name = "pytest-asyncio", specifier = "<0.23" },
+    { name = "pytest-operator" },
 ]
 
 [[package]]
