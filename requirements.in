@@ -1,3 +1,4 @@
+exceptiongroup
 ops
 jinja2
 pydantic<3.0
