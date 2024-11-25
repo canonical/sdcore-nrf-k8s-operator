@@ -4,9 +4,10 @@
 .tox/
 venv/
 build/
+src/sdcore_nrf_k8s_operator.egg-info/
 
 # Python
-**/venv/**
+**/.venv/**
 *.pyc
 .python-version
 .mypy_cache/
