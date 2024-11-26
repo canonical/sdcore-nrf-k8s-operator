@@ -1,3 +1,35 @@
+[project]
+name = "sdcore-nrf-k8s-operator"
+version = "0.1.0"
+requires-python = ">=3.10"
+
+dependencies = [
+    "cosl",
+    "cryptography",
+    "jinja2",
+    "jsonschema",
+    "lightkube-models",
+    "lightkube",
+    "ops",
+    "pydantic<3.0",
+    "pytest-interface-tester",
+    "rpds-py==0.18.1",
+]
+
+[dependency-groups]
+test = [
+    "coverage[toml]",
+    "juju>=3.5.2.1",
+    "pytest-asyncio<0.23",
+    "pytest-operator",
+    "pytest",
+]
+dev = [
+    "codespell",
+    "pyright",
+    "ruff",
+]
+
 # Testing tools configuration
 [tool.coverage.run]
 branch = true

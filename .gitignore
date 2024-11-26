@@ -4,9 +4,10 @@
 .tox/
 venv/
 build/
+src/sdcore_nrf_k8s_operator.egg-info/
 
 # Python
-**/venv/**
+**/.venv/**
 *.pyc
 .python-version
 .mypy_cache/
@@ -14,6 +15,7 @@ __pycache__/
 
 # Charmcraft
 *.charm
+juju-crashdump-*
 
 # Local .terraform directories
 **/.terraform/*
