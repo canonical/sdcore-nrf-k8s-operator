@@ -43,7 +43,7 @@ BASE_CONFIG_PATH = "/etc/nrf"
 CONFIG_FILE_NAME = "nrfcfg.yaml"
 DATABASE_NAME = "free5gc"
 NRF_SBI_PORT = 29510
-CERTS_DIR_PATH = "/support/TLS"  # Certificate paths are hardcoded in NRF code
+CERTS_DIR_PATH = "/support/TLS"
 PRIVATE_KEY_NAME = "nrf.key"
 CERTIFICATE_NAME = "nrf.pem"
 CERTIFICATE_COMMON_NAME = "nrf.sdcore"
@@ -62,6 +62,8 @@ def _render_config(
     nrf_host: str,
     nrf_sbi_port: int,
     scheme: str,
+    tls_pem: str,
+    tls_key: str,
 ) -> str:
     """Render the nrfcfg config file.
 
@@ -72,6 +74,8 @@ def _render_config(
         nrf_host: Hostname or IP of the NRF service
         nrf_sbi_port: Port of the NRF service
         scheme: SBI interface scheme ("http" or "https")
+        tls_pem (str): TLS certificate file.
+        tls_key (str): TLS key file.
 
     Returns:
         str: Rendered config file content
@@ -85,6 +89,8 @@ def _render_config(
         nrf_sbi_port=nrf_sbi_port,
         nrf_ip=nrf_host,
         scheme=scheme,
+        tls_pem=tls_pem,
+        tls_key=tls_key,
     )
     return content
 
@@ -360,6 +366,8 @@ class NRFOperatorCharm(CharmBase):
             webui_url=self._webui.webui_url,
             nrf_sbi_port=NRF_SBI_PORT,
             scheme="https",
+            tls_pem=f"{CERTS_DIR_PATH}/{CERTIFICATE_NAME}",
+            tls_key=f"{CERTS_DIR_PATH}/{PRIVATE_KEY_NAME}",
         )
 
     def _is_config_update_required(self, content: str) -> bool:
@@ -515,7 +523,7 @@ class NRFOperatorCharm(CharmBase):
                     "nrf": {
                         "override": "replace",
                         "startup": "enabled",
-                        "command": f"/bin/nrf --nrfcfg {BASE_CONFIG_PATH}/{CONFIG_FILE_NAME}",
+                        "command": f"/bin/nrf --cfg {BASE_CONFIG_PATH}/{CONFIG_FILE_NAME}",
                         "environment": self._environment_variables,
                     },
                 },
