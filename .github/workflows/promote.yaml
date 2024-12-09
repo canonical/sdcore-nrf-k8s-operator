@@ -15,13 +15,14 @@ on:
         description: Name of the charmhub track to publish
         options:
           - '1.5'
+          - '1.6'
           - latest
 
 
 jobs:
   promote:
     name: Promote Charm
-    uses: canonical/sdcore-github-workflows/.github/workflows/promote.yaml@v2.2.0
+    uses: canonical/sdcore-github-workflows/.github/workflows/promote.yaml@v2.3.0
     with:
       promotion: ${{ github.event.inputs.promotion }}
       track-name: ${{ github.event.inputs.track-name }}
