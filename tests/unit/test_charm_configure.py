@@ -182,7 +182,7 @@ class TestCharmConfigure(NRFUnitTestFixtures):
                         "nrf": {
                             "startup": "enabled",
                             "override": "replace",
-                            "command": "/bin/nrf --nrfcfg /etc/nrf/nrfcfg.yaml",
+                            "command": "/bin/nrf --cfg /etc/nrf/nrfcfg.yaml",
                             "environment": {
                                 "GRPC_GO_LOG_VERBOSITY_LEVEL": "99",
                                 "GRPC_GO_LOG_SEVERITY_LEVEL": "info",
