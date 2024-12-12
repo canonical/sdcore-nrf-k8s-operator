@@ -189,6 +189,7 @@ class TestCharmConfigure(NRFUnitTestFixtures):
                                 "GRPC_TRACE": "all",
                                 "GRPC_VERBOSITY": "debug",
                                 "MANAGED_BY_CONFIG_POD": "true",
+                                "GIN_MODE": "release",
                             },
                         }
                     },
