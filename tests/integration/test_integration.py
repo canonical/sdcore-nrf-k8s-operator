@@ -24,7 +24,7 @@ TLS_CHARM_NAME = "self-signed-certificates"
 TLS_CHARM_CHANNEL = "latest/stable"
 GRAFANA_AGENT_CHARM_NAME = "grafana-agent-k8s"
 GRAFANA_AGENT_CHARM_CHANNEL = "latest/stable"
-SDCORE_CHARMS_BASE = "ubuntu@24.04"
+SDCORE_CHARMS_SERIES = "noble"
 TIMEOUT = 15 * 60
 
 
@@ -162,7 +162,7 @@ async def _deploy_nms(ops_test: OpsTest):
         NMS_CHARM_NAME,
         application_name=NMS_CHARM_NAME,
         channel=NMS_CHARM_CHANNEL,
-        base=SDCORE_CHARMS_BASE,
+        series=SDCORE_CHARMS_SERIES,  # TODO: This should be replaced with base="ubuntu@24.04" once it's properly supported # noqa: E501
     )
     await ops_test.model.integrate(
         relation1=f"{NMS_CHARM_NAME}:common_database", relation2=DB_CHARM_NAME
