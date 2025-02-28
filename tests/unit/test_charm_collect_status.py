@@ -24,7 +24,7 @@ class TestCharmCollectStatus(NRFUnitTestFixtures):
         state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
 
         assert state_out.unit_status == BlockedStatus(
-            f"The following configurations are not valid: ['log-level']"
+            "The following configurations are not valid: ['log-level']"
         )
 
     def test_given_container_not_ready_when_collect_unit_status_then_status_is_waiting(self):
