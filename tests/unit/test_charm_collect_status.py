@@ -13,6 +13,20 @@ from tests.unit.fixtures import NRFUnitTestFixtures
 
 
 class TestCharmCollectStatus(NRFUnitTestFixtures):
+    def test_given_invalid_config_when_collect_unit_status_then_status_is_blocked(self):
+        state_in = testing.State(
+            leader=True,
+            config={
+                "log-level": "invalid",
+            },
+        )
+
+        state_out = self.ctx.run(self.ctx.on.collect_unit_status(), state_in)
+
+        assert state_out.unit_status == BlockedStatus(
+            "The following configurations are not valid: ['log-level']"
+        )
+
     def test_given_container_not_ready_when_collect_unit_status_then_status_is_waiting(self):
         container = testing.Container(
             name="nrf",
