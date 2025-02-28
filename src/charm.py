@@ -36,6 +36,8 @@ from ops.charm import CharmBase, RelationJoinedEvent
 from ops.framework import EventBase
 from ops.pebble import Layer
 
+from charm_config import CharmConfig, CharmConfigInvalidError
+
 logger = logging.getLogger(__name__)
 
 PROMETHEUS_PORT = 8080
@@ -64,6 +66,7 @@ def _render_config(
     scheme: str,
     tls_pem: str,
     tls_key: str,
+    log_level: str,
 ) -> str:
     """Render the nrfcfg config file.
 
@@ -76,6 +79,7 @@ def _render_config(
         scheme: SBI interface scheme ("http" or "https")
         tls_pem (str): TLS certificate file.
         tls_key (str): TLS key file.
+        log_level (str): Log level for the NRF.
 
     Returns:
         str: Rendered config file content
@@ -91,6 +95,7 @@ def _render_config(
         scheme=scheme,
         tls_pem=tls_pem,
         tls_key=tls_key,
+        log_level=log_level,
     )
     return content
 
@@ -106,6 +111,10 @@ class NRFOperatorCharm(CharmBase):
             return
         self._container_name = self._service_name = "nrf"
         self._container = self.unit.get_container(self._container_name)
+        try:
+            self._charm_config: CharmConfig = CharmConfig.from_charm(charm=self)
+        except CharmConfigInvalidError:
+            return
         self._database = DatabaseRequires(
             self, relation_name=DATABASE_RELATION_NAME, database_name=DATABASE_NAME
         )
@@ -165,6 +174,10 @@ class NRFOperatorCharm(CharmBase):
 
     def ready_to_configure(self) -> bool:
         """Return whether all preconditions are met to proceed with configuration."""
+        try:  # workaround for https://github.com/canonical/operator/issues/736
+            self._charm_config: CharmConfig = CharmConfig.from_charm(charm=self)
+        except CharmConfigInvalidError:
+            return False
         if not self._container.can_connect():
             return False
         if self._missing_relations():
@@ -222,6 +235,12 @@ class NRFOperatorCharm(CharmBase):
             # charm.
             event.add_status(BlockedStatus("Scaling is not implemented for this charm"))
             logger.info("Scaling is not implemented for this charm")
+            return
+        try:  # workaround for https://github.com/canonical/operator/issues/736
+            self._charm_config: CharmConfig = CharmConfig.from_charm(charm=self)
+        except CharmConfigInvalidError as exc:
+            event.add_status(BlockedStatus(exc.msg))
+            logger.info(exc.msg)
             return
         if not self._container.can_connect():
             event.add_status(WaitingStatus("Waiting for container to be ready"))
@@ -368,6 +387,7 @@ class NRFOperatorCharm(CharmBase):
             scheme="https",
             tls_pem=f"{CERTS_DIR_PATH}/{CERTIFICATE_NAME}",
             tls_key=f"{CERTS_DIR_PATH}/{PRIVATE_KEY_NAME}",
+            log_level=self._charm_config.log_level,
         )
 
     def _is_config_update_required(self, content: str) -> bool:
