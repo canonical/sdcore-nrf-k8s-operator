@@ -41,7 +41,7 @@ async def deploy(ops_test: OpsTest, request):
         charm,
         resources=resources,
         application_name=APP_NAME,
-        series="noble",
+        base=SDCORE_CHARMS_BASE,
     )
 
 
